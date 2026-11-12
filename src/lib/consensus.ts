@@ -3,9 +3,9 @@ import { normalizeBpm } from "./bpm";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
-  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, beatport: 2.5, tunebat: 2, "essentia-preview": 1.8, deezer: 1,
+  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, "essentia-preview": 1.8, deezer: 1,
 };
-const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "beatport", "tunebat", "ytmusic", "lastfm", "musicbrainz"];
+const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
@@ -68,8 +68,6 @@ export function verifyLinks(t: { title: string; artist: string }) {
   const q = `${t.artist} ${t.title}`.trim();
   return {
     keybpm: [
-      { label: "Tunebat", url: `https://tunebat.com/Search?q=${enc(q)}` },
-      { label: "Beatport", url: `https://www.beatport.com/search?q=${enc(q)}` },
       { label: "VocalRemover", url: "https://vocalremover.org/key-bpm-finder" },
       { label: "Ghost Production", url: "https://theghostproduction.com/bpm-and-key-finder/" },
       { label: "LANDR", url: "https://samples.landr.com/key-bpm-finder" },

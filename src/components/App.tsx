@@ -100,7 +100,7 @@ export default function App() {
             {!tracks.length && (
               <div className="text-center py-6 sm:py-10">
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight">Monte sets que <span className="grad-text">fluem</span>.</h1>
-                <p className="text-muted mt-3 max-w-2xl mx-auto">Envie músicas ou uma lista. O MixKey identifica <b>key (Camelot)</b> e <b>BPM</b>, cruza com Deezer, Spotify, Apple Music, Beatport, Tunebat e outras plataformas, busca as capas e sugere a melhor ordem para mixar, conforme a vibe que você quer.</p>
+                <p className="text-muted mt-3 max-w-2xl mx-auto">Envie músicas ou uma lista. O MixKey identifica <b>key (Camelot)</b> e <b>BPM</b>, cruza com Deezer, Spotify, Apple Music, YouTube Music e outras plataformas, busca as capas e sugere a melhor ordem para mixar, conforme a vibe que você quer.</p>
               </div>
             )}
             <AddTracks notify={notify} />
@@ -138,7 +138,6 @@ export default function App() {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted mt-3">Sites com proteção anti-robô (Cloudflare) podem recusar consultas automáticas; nesse caso a faixa mostra “Bloqueado” e você pode verificar pelo link manual.</p>
       </Modal>
       <Toast msg={toast} />
     </div>

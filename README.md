@@ -6,9 +6,9 @@ Envie **arquivos de áudio**, uma **lista/planilha** ou **cole um texto** com fa
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
    - pela **análise do áudio no navegador** (Essentia.js — os arquivos nunca saem do seu computador);
    - pela **análise da prévia de 30 s** (Deezer) das faixas que vieram de uma lista;
-   - por **cruzamento com plataformas**: ReccoBeats (via Spotify), Beatport, Tunebat, Deezer…
+   - por **cruzamento com plataformas**: ReccoBeats (via Spotify), Deezer, MusicBrainz…
    - O resultado final é decidido por **votação**. Cada valor vem com um indicador de confiança (🟢🟡🔴) e a lista "fonte → valor".
-2. Busca as **capas** (tags, Deezer, Spotify, Apple Music, Beatport, Tunebat, YouTube Music, Last.fm e MusicBrainz). Um resultado só é aceito quando o **nome confere** (título + artista; remix ≠ original).
+2. Busca as **capas** (tags, Deezer, Spotify, Apple Music, YouTube Music, Last.fm e MusicBrainz). Um resultado só é aceito quando o **nome confere** (título + artista; remix ≠ original).
 3. Sugere **várias sequências** (Set A/B/C) que respeitam a roda Camelot, a tolerância de pitch e a **curva de energia** da vibe escolhida:
    - **Vibes:** Jornada clássica, Warm-up, Peak time, Até o clímax, Sunset/After, Montanha-russa, Esquenta, Lounge e Fluxo harmônico puro;
    - **Final do set:** no clímax, animado, mais leve ou bem suave.
@@ -43,10 +43,9 @@ npm test                     # testes unitários
 | Spotify | `SPOTIFY_CLIENT_ID/SECRET` | capa, ISRC, **habilita a ReccoBeats** |
 | ReccoBeats | (usa o Spotify) | **key, BPM, energia** |
 | Last.fm | `LASTFM_API_KEY` | faixas similares, gêneros |
-| Tunebat, Beatport | — (scraping) | key, BPM, capa — *ver observação* |
 
 **Observações:**
-- Tunebat e Beatport usam proteção anti-robô (Cloudflare) e normalmente recusam consultas automáticas. Os scrapers tentam e, se forem bloqueados, a fonte aparece como "Bloqueado". Cada faixa tem links para **verificar manualmente** nesses sites, além de VocalRemover, LANDR e Ghost Production, que só analisam arquivos enviados e não têm busca.
+- Cada faixa tem links para **verificar manualmente** a key/BPM no VocalRemover, LANDR e Ghost Production (que analisam o arquivo enviado), além de links de busca nas plataformas de streaming.
 - Recomendação: **crie a chave do Spotify**. Ela é gratuita e libera a ReccoBeats, a fonte online mais completa de key/BPM.
 
 ## Importar no Rekordbox
