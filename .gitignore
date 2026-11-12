@@ -1,0 +1,8 @@
+node_modules
+.next
+.env*.local
+.env
+public/essentia
+*.tsbuildinfo
+next-env.d.ts
+.vercel
