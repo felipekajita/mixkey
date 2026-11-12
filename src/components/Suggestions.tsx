@@ -55,7 +55,7 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
         let best = { score: 0, with: "" };
         for (const t of lib) {
           const sc = Math.max(transitionInfo(t, fake, 0.06).score, transitionInfo(fake, t, 0.06).score);
-          if (sc > best.score) best = { score: sc, with: `${t.artist} – ${t.title}` };
+          if (sc > best.score) best = { score: sc, with: `${t.title} – ${t.artist}` };
         }
         setItems((cur) => cur.map((x) => (x.title === s.title && x.artist === s.artist ? { ...x, key: a.key, bpm: a.bpm, analyzing: false, fit: lib.length ? best : undefined } : x)));
       } catch {

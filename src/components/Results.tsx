@@ -9,7 +9,7 @@ import type { Track } from "@/lib/types";
 import { rescoreSequence, findBridges, buildSequences, type SequenceResult, type Transition } from "@/lib/sequencer";
 import { formatDuration } from "@/lib/bpm";
 import { camelotToMusical } from "@/lib/camelot";
-import { toM3U8, toText, toCSV, download } from "@/lib/export";
+import { toM3U8, toText, toCSV, toRekordboxXml, download } from "@/lib/export";
 import { Button, Card, Modal, Tabs, inputCls, cn } from "./ui";
 import { Cover, KeyBadge, EnergyBar, ScorePill } from "./bits";
 import CamelotWheel from "./CamelotWheel";
@@ -296,11 +296,24 @@ function ExportModal({ open, onClose, seq, list, notify }: { open: boolean; onCl
     <Modal open={open} onClose={onClose} title="Exportar set">
       <div className="space-y-4">
         <div>
-          <div className="font-medium mb-1">Playlist M3U8 (Rekordbox)</div>
-          <p className="text-sm text-muted mb-2">No Rekordbox: <b>Arquivo → Importar → Importar playlist</b> (ou arraste o .m3u8 para “Playlists”). As faixas precisam existir no caminho indicado.</p>
-          <input className={inputCls} placeholder="Pasta das músicas (ex.: D:\Musicas\House  ou  /Users/voce/Music)" value={folder} onChange={(e) => { setFolder(e.target.value); try { localStorage.setItem("mk-folder", e.target.value); } catch {} }} />
-          {missing > 0 && <p className="text-xs text-amber-400 mt-1">{missing} faixa(s) vieram de lista (sem arquivo); o nome será “Artista - Título.mp3”. Ajuste no Rekordbox se necessário (Relocate).</p>}
-          <Button variant="primary" className="mt-3" onClick={() => { download(`${safe}.m3u8`, toM3U8(seq, list, folder), "audio/x-mpegurl"); notify("M3U8 baixado"); }}><Download size={16} /> Baixar .m3u8</Button>
+          <div className="font-medium mb-1">Pasta das músicas no seu computador</div>
+          <input className={inputCls} placeholder="ex.: D:\Musicas\House  ou  /Users/voce/Music" value={folder} onChange={(e) => { setFolder(e.target.value); try { localStorage.setItem("mk-folder", e.target.value); } catch {} }} />
+          {missing > 0 && <p className="text-xs text-amber-400 mt-1">{missing} faixa(s) vieram de lista/link (sem arquivo); o arquivo presumido será “Artista - Título.mp3”. Se o nome for outro, use “Relocate” no Rekordbox.</p>}
+        </div>
+        <div className="rounded-xl border border-accent/40 bg-accent/5 p-3">
+          <div className="font-medium">XML do Rekordbox <span className="text-xs text-accent">recomendado</span></div>
+          <p className="text-sm text-muted mt-1 mb-2">Cria a playlist na ordem do set já com <b>BPM</b>, <b>tom</b> e um <b>comentário</b> em cada faixa (posição no set e dica da próxima transição).</p>
+          <ol className="text-xs text-muted list-decimal pl-4 space-y-0.5 mb-3">
+            <li>No Rekordbox: <b>Preferências → Avançado → Banco de dados → rekordbox xml</b> → escolha este arquivo.</li>
+            <li>Ative a árvore “rekordbox xml” em <b>Preferências → Visualização → Layout</b>, se ela não aparecer.</li>
+            <li>Na barra lateral, abra <b>rekordbox xml → Playlists</b>, clique com o botão direito no set → <b>Importar playlist</b>.</li>
+          </ol>
+          <Button variant="primary" onClick={() => { download(`${safe}.xml`, toRekordboxXml(seq, list, folder), "application/xml"); notify("XML do Rekordbox baixado"); }}><Download size={16} /> Baixar XML do Rekordbox</Button>
+        </div>
+        <div>
+          <div className="font-medium">Playlist M3U8</div>
+          <p className="text-sm text-muted mt-1 mb-2">Só a ordem das faixas. No Rekordbox: <b>Arquivo → Importar → Importar playlist</b> (ou arraste o .m3u8 para “Playlists”).</p>
+          <Button onClick={() => { download(`${safe}.m3u8`, toM3U8(seq, list, folder), "audio/x-mpegurl"); notify("M3U8 baixado"); }}><Download size={16} /> Baixar .m3u8</Button>
         </div>
         <div className="border-t border-line pt-4 flex flex-wrap gap-2">
           <Button onClick={() => { navigator.clipboard.writeText(toText(seq, list)); notify("Setlist copiada"); }}><Copy size={16} /> Copiar setlist (texto)</Button>

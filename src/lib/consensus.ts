@@ -1,5 +1,5 @@
 import type { Confidence, SourceReading, Track } from "./types";
-import { normalizeBpm } from "./bpm";
+import { resolveBpm } from "./bpmOctave";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
@@ -9,7 +9,7 @@ const COVER_ORDER = ["tags", "link", "deezer", "spotify", "itunes", "ytmusic", "
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
-export function computeConsensus(readings: SourceReading[]): Partial<Track> {
+export function computeConsensus(readings: SourceReading[], extraGenres: string[] = []): Partial<Track> {
   const ok = readings.filter(usable);
   const out: Partial<Track> = {};
 
@@ -24,19 +24,18 @@ export function computeConsensus(readings: SourceReading[]): Partial<Track> {
     out.keyConfidence = conf(share, w);
   } else out.keyConfidence = "none";
 
-  // BPM (agrupamento ±2%)
-  const bs = ok.filter((r) => r.bpm).map((r) => ({ b: normalizeBpm(r.bpm)!, w: KEY_W[r.source] ?? 1.5 }));
-  if (bs.length) {
-    let best = { sum: 0, wsum: 0, total: 0 };
-    const total = bs.reduce((a, x) => a + x.w, 0);
-    for (const c of bs) {
-      const group = bs.filter((x) => Math.abs(x.b - c.b) / c.b <= 0.02);
-      const wsum = group.reduce((a, x) => a + x.w, 0);
-      if (wsum > best.wsum) best = { sum: group.reduce((a, x) => a + x.b * x.w, 0), wsum, total };
-    }
-    const avg = best.sum / best.wsum;
-    out.bpm = Math.abs(avg - Math.round(avg)) < 0.15 ? Math.round(avg) : Math.round(avg * 10) / 10;
-    out.bpmConfidence = conf(best.wsum / total, best.wsum);
+  // gêneros (das fontes + da faixa) — usados também para corrigir meio/dobro tempo
+  const genres = new Set<string>();
+  ok.forEach((r) => r.genres?.forEach((g) => genres.add(g.toLowerCase())));
+  extraGenres.forEach((g) => genres.add(g.toLowerCase()));
+
+  // BPM: agrupa leituras iguais ou em meio/dobro tempo e escolhe a oitava certa
+  const bs = ok.filter((r) => r.bpm).map((r) => ({ b: r.bpm!, w: KEY_W[r.source] ?? 1.5 }));
+  const br = resolveBpm(bs, [...genres]);
+  if (br) {
+    out.bpm = br.bpm;
+    out.bpmNote = br.note;
+    out.bpmConfidence = conf(br.groupWeight / br.totalWeight, br.groupWeight);
   } else out.bpmConfidence = "none";
 
   // capa
@@ -48,8 +47,6 @@ export function computeConsensus(readings: SourceReading[]): Partial<Track> {
   out.durationSec = pick("durationSec") as number | undefined;
   out.isrc = pick("isrc") as string | undefined;
   out.previewUrl = (ok.find((r) => r.source === "deezer" && r.previewUrl) ?? ok.find((r) => r.previewUrl))?.previewUrl;
-  const genres = new Set<string>();
-  ok.forEach((r) => r.genres?.forEach((g) => genres.add(g.toLowerCase())));
   if (genres.size) out.genres = [...genres].slice(0, 8);
   const en = ok.find((r) => r.energy != null);
   if (en) out.energy = en.energy;

@@ -170,7 +170,7 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
           <div className="flex flex-wrap gap-1.5 mt-2">
             {PLATFORM_CHIPS.map((p) => <span key={p} className="text-[11px] rounded-full border border-line px-2 py-0.5 text-muted">{p}</span>)}
           </div>
-          <p className="text-xs text-muted mt-1.5">Faixas, álbuns e playlists de Spotify, Deezer e Apple Music; vídeos do YouTube/YouTube Music; faixas do SoundCloud. * Leitura parcial (o site limita): confira o artista. Amazon Music não expõe os dados — cole o nome.</p>
+          <p className="text-xs text-muted mt-1.5">Faixas, álbuns e playlists de Spotify, Deezer, Apple Music, YouTube e YouTube Music; faixas do SoundCloud. * Leitura parcial (o site limita): confira o artista. Amazon Music não expõe os dados — cole o nome.</p>
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <Button variant="primary" disabled={!linkText.trim() || !!resolving} onClick={() => readLinks(linkText)}>
               {resolving ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} Ler links
@@ -215,18 +215,18 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
           <div className="max-h-72 overflow-auto scroll-thin text-sm">
             <table className="w-full">
               <thead className="text-xs text-muted text-left sticky top-0 bg-panel">
-                <tr>{preview.links && <th className="py-1 pr-2 w-10" />}<th className="py-1 pr-2">Artista</th><th className="pr-2">Título</th><th className="pr-2">Key</th><th className="pr-2">BPM</th><th>Duração</th></tr>
+                <tr>{preview.links && <th className="py-1 pr-2 w-10" />}<th className="py-1 pr-2">Título</th><th className="pr-2">Artista</th><th className="pr-2">Key</th><th className="pr-2">BPM</th><th>Duração</th></tr>
               </thead>
               <tbody>
                 {tracks.map((p, i) => (
                   <tr key={i} className="border-t border-line/60">
                     {preview.links && <td className="py-1 pr-2"><Cover src={p.coverUrl} size={28} className="rounded" /></td>}
-                    <td className="py-1.5 pr-2 text-muted">{p.artist || <i className="opacity-60">?</i>}</td>
-                    <td className="pr-2">
+                    <td className="py-1.5 pr-2">
                       {p.title}
                       {p.sourceLabel && <span className="ml-1.5 text-[10px] text-muted border border-line rounded px-1">{p.sourceLabel}</span>}
                       {p.sourceUrl && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="ml-1 inline-block text-muted hover:text-accent align-middle"><ExternalLink size={11} /></a>}
                     </td>
+                    <td className="pr-2 text-muted">{p.artist || <i className="opacity-60">?</i>}</td>
                     <td className="pr-2"><KeyBadge k={p.key} size="sm" /></td>
                     <td className="pr-2 tabular-nums">{p.bpm ?? "—"}</td>
                     <td className="tabular-nums text-muted">{formatDuration(p.durationSec)}</td>

@@ -1,4 +1,4 @@
-import { fetchJson, fetchText, BROWSER_UA } from "../sources/http";
+import { fetchJson, fetchText, deepFind, BROWSER_UA } from "../sources/http";
 import { spotifyApi, spotifyEnabled } from "../sources/spotify";
 import { genericPage, splitTitleArtist, cleanSiteTitle } from "./meta";
 import { platformOf, type ResolveResult, type ResolvedTrack } from "./types";
@@ -126,20 +126,71 @@ async function youtube(url: string): Promise<Omit<ResolveResult, "url" | "platfo
   const u = new URL(url);
   const id = u.searchParams.get("v") ?? (/youtu\.be$/.test(u.hostname) ? u.pathname.slice(1) : /\/(shorts|embed|live)\/([\w-]{6,})/.exec(u.pathname)?.[2]);
   if (!id) {
-    if (u.searchParams.get("list")) throw new Error("Playlists do YouTube ainda não são suportadas — cole os links das músicas");
+    const list = u.searchParams.get("list");
+    if (list) return youtubePlaylist(list);
     throw new Error("Link do YouTube sem vídeo");
   }
   const o = await fetchJson<{ title: string; author_name: string; thumbnail_url?: string }>(
     `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`,
   );
   const channel = o.author_name.replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim();
-  const at = splitTitleArtist(o.title, channel);
+  const at = splitTitleArtist(cleanVideoTitle(o.title), channel);
   // canais de selo ("Spinnin' Records", "Anjunadeep") quase sempre usam "Artista - Título"
   return {
     kind: "track",
     tracks: [{ ...at, coverUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, url: `https://music.youtube.com/watch?v=${id}` }],
     warning: /\s-\s/.test(cleanSiteTitle(o.title)) ? undefined : `Artista deduzido do canal "${o.author_name}" — confira`,
   };
+}
+
+/** Playlists do YouTube / YouTube Music (inclusive álbuns "OLAK5uy_…"): lê os dados embutidos na página */
+async function youtubePlaylist(listId: string): Promise<Omit<ResolveResult, "url" | "platform">> {
+  if (/^(RD|UL)/.test(listId)) throw new Error("Mixes automáticos do YouTube não podem ser lidos — use uma playlist normal");
+  const html = await fetchText(`https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}&hl=en`, { timeoutMs: 10000, headers: { Cookie: "CONSENT=YES+1; SOCS=CAI" } });
+  const raw = /var ytInitialData = (\{[\s\S]*?\});<\/script>/.exec(html)?.[1];
+  if (!raw) throw new Error("Playlist do YouTube não encontrada (é pública?)");
+  const data = JSON.parse(raw);
+  const tracks: ResolvedTrack[] = [];
+  const text = (x: any): string => x?.content ?? x?.simpleText ?? (x?.runs ?? []).map((r: any) => r.text).join("") ?? "";
+
+  // formato novo (lockupViewModel)
+  for (const l of deepFind(data, (o) => o.contentType === "LOCKUP_CONTENT_TYPE_VIDEO" && !!o.contentId && !!o.metadata)) {
+    const md = l.metadata?.lockupMetadataViewModel;
+    const rows: any[] = md?.metadata?.contentMetadataViewModel?.metadataRows ?? [];
+    const channel = (rows[0]?.metadataParts ?? []).map((p: any) => text(p.text)).join(" ").replace(/\s+and\s+/g, " & ").trim();
+    const dur = /"text":"(\d{1,2}:\d{2}(?::\d{2})?)"/.exec(JSON.stringify(l.contentImage ?? {}))?.[1];
+    tracks.push(ytTrack(l.contentId, text(md?.title), channel, dur));
+  }
+  // formato antigo (playlistVideoRenderer)
+  if (!tracks.length) {
+    for (const r of deepFind(data, (o) => !!o.videoId && !!o.title && !!o.shortBylineText && "lengthSeconds" in o)) {
+      tracks.push({ ...ytTrack(r.videoId, text(r.title), text(r.shortBylineText)), durationSec: +r.lengthSeconds || undefined });
+    }
+  }
+  if (!tracks.length) throw new Error("Não encontrei vídeos nesta playlist (é pública?)");
+  const header = deepFind(data, (o) => !!o.pageHeaderViewModel)[0]?.pageHeaderViewModel;
+  const name = text(header?.title?.dynamicTextViewModel?.text) || /<meta property="og:title" content="([^"]+)"/.exec(html)?.[1];
+  const more = deepFind(data, (o) => !!o.continuationCommand).length > 0;
+  return {
+    kind: "playlist", name, tracks: tracks.slice(0, MAX_TRACKS),
+    warning: more ? `Mostrando as primeiras ${tracks.length} faixas da playlist (o YouTube carrega o resto aos poucos).` : undefined,
+  };
+}
+
+/** Títulos de vídeo: corta "| créditos…" e marcações como "OFFICIAL MUSIC VIDEO" fora de parênteses */
+export function cleanVideoTitle(t: string): string {
+  return t.split(/\s+[|｜]\s+/)[0]
+    .replace(/\b(official\s+(music\s+)?video|official\s+audio|official\s+visuali[sz]er|lyric\s+video|music\s+video|video\s+oficial|clipe\s+oficial)\b/gi, "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s{2,}/g, " ").replace(/[\s\-–|]+$/, "").trim();
+}
+
+function ytTrack(id: string, title: string, channel: string, dur?: string): ResolvedTrack {
+  const ch = channel.replace(/\s*&\s*\d+\s+more$/i, "").replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim();
+  const at = splitTitleArtist(cleanVideoTitle(title), ch);
+  const parts = dur?.split(":").map(Number);
+  const durationSec = parts ? parts.reduce((a, n) => a * 60 + n, 0) : undefined;
+  return { ...at, durationSec, coverUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, url: `https://music.youtube.com/watch?v=${id}` };
 }
 
 // ---------------- SoundCloud ----------------

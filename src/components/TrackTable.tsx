@@ -134,6 +134,7 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
             {t.key && <>Notação: {t.key} · {camelotToMusical(t.key)} · Open Key {camelotToOpenKey(t.key)} · </>}
             Duração {formatDuration(t.durationSec)}{t.genres?.length ? ` · ${t.genres.slice(0, 4).join(", ")}` : ""}
           </div>
+          {t.bpmNote && !t.manualBpm && <div className="text-xs text-amber-400">⚠ {t.bpmNote}</div>}
           <div className="flex gap-2">
             <Button size="sm" onClick={() => reprocess(t.id)}><RefreshCw size={14} /> Buscar novamente</Button>
             {(t.manualKey || t.manualBpm || t.manualEnergy) && <Button size="sm" variant="ghost" onClick={() => { update(t.id, { manualKey: false, manualBpm: false, manualEnergy: false }); reprocess(t.id); }}>Desfazer edições manuais</Button>}
@@ -155,11 +156,11 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
                   <span className="tabular-nums w-14">{r.bpm ? `${r.bpm} BPM` : "—"}</span>
                   {r.coverUrl && <Cover src={r.coverUrl} size={24} className="rounded" />}
                   {r.matchScore != null && (
-                    <span className={cn("text-xs", ok ? "text-emerald-400" : "text-red-400")} title={`Encontrado: ${r.matchedArtist} - ${r.matchedTitle}`}>
+                    <span className={cn("text-xs", ok ? "text-emerald-400" : "text-red-400")} title={`Encontrado: ${r.matchedTitle} - ${r.matchedArtist}`}>
                       {Math.round(r.matchScore * 100)}% {ok ? "compatível" : "nome diferente — ignorado"}
                     </span>
                   )}
-                  {r.matchedTitle && <span className="text-xs text-muted truncate max-w-[16rem]">“{r.matchedArtist} – {r.matchedTitle}”</span>}
+                  {r.matchedTitle && <span className="text-xs text-muted truncate max-w-[16rem]">“{r.matchedTitle} – {r.matchedArtist}”</span>}
                   {r.url && <a href={r.url} target="_blank" rel="noreferrer" className="ml-auto text-muted hover:text-accent"><ExternalLink size={14} /></a>}
                 </>
               )}

@@ -28,3 +28,13 @@ describe("links", () => {
     expect(jsonLd(html)[0].byArtist.name).toBe("CamelPhat");
   });
 });
+
+import { cleanVideoTitle } from "./resolve";
+describe("títulos de vídeo do YouTube", () => {
+  it("remove créditos e marcações", () => {
+    expect(cleanVideoTitle("KALYANI (with Shreya Ghoshal) OFFICIAL MUSIC VIDEO | ARJN | KDS")).toBe("KALYANI (with Shreya Ghoshal)");
+    expect(cleanVideoTitle("POKITO (Official Video)")).toBe("POKITO");
+    expect(cleanVideoTitle("KING: Tu Mil Jaaye | Shah Rukh Khan, Deepika")).toBe("KING: Tu Mil Jaaye");
+    expect(cleanVideoTitle("Fred again.. - Delilah (pull me out of this)")).toBe("Fred again.. - Delilah (pull me out of this)");
+  });
+});

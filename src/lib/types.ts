@@ -40,6 +40,7 @@ export interface Track {
   bpmConfidence: Confidence;
   manualKey?: boolean;
   manualBpm?: boolean;
+  bpmNote?: string;        // explicação quando o BPM foi corrigido (meio/dobro tempo)
   manualEnergy?: boolean;
   status: "pending" | "analyzing" | "looking-up" | "done" | "error";
   statusText?: string;

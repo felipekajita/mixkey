@@ -13,7 +13,7 @@ Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **col
    - **Vibes:** Jornada clássica, Warm-up, Peak time, Até o clímax, Sunset/After, Montanha-russa, Esquenta, Lounge e Fluxo harmônico puro;
    - **Final do set:** no clímax, animado, mais leve ou bem suave.
 4. Mostra o set de forma visual: timeline com as transições (✓ mesmo tom, ↕ relativa, ⚡ boost, ⚠ conflito), dicas de mixagem, gráfico de energia, caminho na roda Camelot, grade de capas e **modo cabine** em tela cheia para usar ao vivo.
-5. Exporta **M3U8** para o Rekordbox, além de CSV e texto. Sugere **faixas dos mesmos artistas ou de artistas parecidos**, com prévia e nota de compatibilidade.
+5. Exporta **XML do Rekordbox** (playlist já com BPM, tom e dica de transição em cada faixa) e **M3U8**, além de CSV e texto, sempre no formato "Título - Artista". Sugere **faixas dos mesmos artistas ou de artistas parecidos**, com prévia e nota de compatibilidade.
 
 ## Colar links
 
@@ -24,7 +24,7 @@ Na aba **Links**, cole um link por linha. Também dá para colar links na aba **
 | Spotify (também `spotify:track:…` e `spotify.link`) | ✅ | ✅ | ✅ até 50 faixas sem chave; inteira com a chave da API |
 | Deezer (também `link.deezer.com`) | ✅ | ✅ | ✅ (públicas) |
 | Apple Music | ✅ | ✅ | ✅ |
-| YouTube / YouTube Music / youtu.be | ✅ (limpa "Official Video" etc.) | — | ❌ cole os links das músicas |
+| YouTube / YouTube Music / youtu.be | ✅ (limpa "Official Video" etc.) | ✅ (álbuns `OLAK5uy_…`) | ✅ primeiras ~100 faixas (mixes automáticos "RD…" não) |
 | SoundCloud | ✅ | — | ❌ só o nome do set |
 | Beatport | ⚠️ só o título (o site bloqueia leitura automática) | — | — |
 | Tidal, Bandcamp, Shazam e outros | ⚠️ pelas meta tags da página, quando disponíveis | | |
@@ -79,7 +79,21 @@ npm test                     # testes unitários
 
 ## Importar no Rekordbox
 
-Na tela **Sequências → Exportar**, informe a pasta onde estão suas músicas e baixe o `.m3u8`. No Rekordbox, use **Arquivo → Importar → Importar playlist** ou arraste o arquivo para "Playlists". Faixas que vieram de lista (sem arquivo) recebem o nome `Artista - Título.mp3`; use **Relocate** no Rekordbox, se for preciso.
+Na tela **Sequências → Exportar**, informe a pasta onde estão suas músicas.
+
+**XML do Rekordbox (recomendado):** cria a playlist na ordem do set, já com BPM, tom e um comentário em cada faixa (posição no set e dica da próxima transição).
+1. Baixe o `.xml`.
+2. No Rekordbox, vá em **Preferências → Avançado → Banco de dados → rekordbox xml** e escolha o arquivo.
+3. Se a árvore "rekordbox xml" não aparecer na barra lateral, ative em **Preferências → Visualização → Layout**.
+4. Abra **rekordbox xml → Playlists**, clique com o botão direito no set e escolha **Importar playlist**.
+
+**M3U8:** só a ordem das faixas. Use **Arquivo → Importar → Importar playlist** ou arraste o arquivo para "Playlists".
+
+Faixas que vieram de lista ou link (sem arquivo) recebem o nome presumido `Artista - Título.mp3`. Se o seu arquivo tiver outro nome, use **Relocate** no Rekordbox.
+
+## BPM em meio ou dobro tempo
+
+Detectores às vezes leem metade ou o dobro do BPM real (ex.: 85 em vez de 171). O MixKey trata leituras ×2/÷2 de fontes diferentes como a mesma e escolhe o valor pelos votos das fontes e pela faixa típica do gênero (house 110–132, techno 122–150, drum and bass 160–180, dubstep 135–155, hip hop 75–115…). Quando o BPM é corrigido, os detalhes da faixa mostram um aviso explicando o ajuste.
 
 ## Formatos aceitos
 

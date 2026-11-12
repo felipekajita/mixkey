@@ -124,11 +124,11 @@ export default function Builder({ notify }: { notify: (m: string) => void }) {
             <div className="flex gap-2">
               <select className={inputCls} value={o.startTrackId ?? ""} onChange={(e) => set({ startTrackId: e.target.value || undefined })}>
                 <option value="">Abertura: automática</option>
-                {tracks.map((t) => <option key={t.id} value={t.id}>{t.artist ? `${t.artist} – ` : ""}{t.title}</option>)}
+                {tracks.map((t) => <option key={t.id} value={t.id}>{t.title}{t.artist ? ` – ${t.artist}` : ""}</option>)}
               </select>
               <select className={inputCls} value={o.endTrackId ?? ""} onChange={(e) => set({ endTrackId: e.target.value || undefined })}>
                 <option value="">Final: automático</option>
-                {tracks.map((t) => <option key={t.id} value={t.id}>{t.artist ? `${t.artist} – ` : ""}{t.title}</option>)}
+                {tracks.map((t) => <option key={t.id} value={t.id}>{t.title}{t.artist ? ` – ${t.artist}` : ""}</option>)}
               </select>
             </div>
           </Field>

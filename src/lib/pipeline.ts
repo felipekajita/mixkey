@@ -90,7 +90,7 @@ const upd = (id: string, p: Partial<Track>) => useStore.getState().updateTrack(i
 function applyConsensus(id: string) {
   const t = get(id);
   if (!t) return;
-  const c = computeConsensus(t.readings);
+  const c = computeConsensus(t.readings, t.genres);
   const patch: Partial<Track> = {
     keyConfidence: c.keyConfidence, bpmConfidence: c.bpmConfidence,
     coverUrl: t.coverUrl?.startsWith("data:") ? t.coverUrl : c.coverUrl ?? t.coverUrl,
@@ -98,7 +98,7 @@ function applyConsensus(id: string) {
     durationSec: t.durationSec ?? c.durationSec, genres: c.genres ?? t.genres,
   };
   if (!t.manualKey) patch.key = c.key;
-  if (!t.manualBpm) patch.bpm = c.bpm;
+  if (!t.manualBpm) { patch.bpm = c.bpm; patch.bpmNote = c.bpmNote; }
   if (!t.manualEnergy) {
     const merged = { ...t, ...patch };
     patch.energy = c.energy != null ? Math.round(((c.energy + estimateEnergy(merged)) / 2) * 10) / 10 : estimateEnergy(merged);
