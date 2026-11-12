@@ -89,7 +89,7 @@ Na tela **Sequências → Exportar**, informe a pasta onde estão suas músicas.
 
 **M3U8:** só a ordem das faixas. Use **Arquivo → Importar → Importar playlist** ou arraste o arquivo para "Playlists".
 
-Faixas que vieram de lista ou link (sem arquivo) recebem o nome presumido `Artista - Título.mp3`. Se o seu arquivo tiver outro nome, use **Relocate** no Rekordbox.
+Faixas que vieram de lista ou link (sem arquivo) recebem o nome presumido `Título - Artista.mp3`. Se o seu arquivo tiver outro nome, use **Relocate** no Rekordbox.
 
 ## BPM em meio ou dobro tempo
 

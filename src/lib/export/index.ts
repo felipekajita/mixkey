@@ -6,8 +6,8 @@ import { formatDuration } from "../bpm";
 /** Formato de saída: "Título - Artista" */
 export const trackLabel = (t: Pick<Track, "title" | "artist">) => `${t.title}${t.artist ? ` - ${t.artist}` : ""}`;
 
-/** Nome de arquivo presumido quando a faixa veio de lista/link (arquivos costumam ser "Artista - Título") */
-const guessFile = (t: Track) => t.fileName || `${t.artist ? `${t.artist} - ` : ""}${t.title}.mp3`.replace(/[\\/:*?"<>|]/g, "_");
+/** Nome de arquivo presumido quando a faixa veio de lista/link: "Título - Artista.mp3" */
+const guessFile = (t: Track) => t.fileName || `${trackLabel(t)}.mp3`.replace(/[\\/:*?"<>|]/g, "_");
 
 function joinPath(baseFolder: string, file: string) {
   const sep = baseFolder.includes("\\") ? "\\" : "/";

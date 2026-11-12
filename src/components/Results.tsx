@@ -298,7 +298,7 @@ function ExportModal({ open, onClose, seq, list, notify }: { open: boolean; onCl
         <div>
           <div className="font-medium mb-1">Pasta das músicas no seu computador</div>
           <input className={inputCls} placeholder="ex.: D:\Musicas\House  ou  /Users/voce/Music" value={folder} onChange={(e) => { setFolder(e.target.value); try { localStorage.setItem("mk-folder", e.target.value); } catch {} }} />
-          {missing > 0 && <p className="text-xs text-amber-400 mt-1">{missing} faixa(s) vieram de lista/link (sem arquivo); o arquivo presumido será “Artista - Título.mp3”. Se o nome for outro, use “Relocate” no Rekordbox.</p>}
+          {missing > 0 && <p className="text-xs text-amber-400 mt-1">{missing} faixa(s) vieram de lista/link (sem arquivo); o arquivo presumido será “Título - Artista.mp3”. Se o nome for outro, use “Relocate” no Rekordbox.</p>}
         </div>
         <div className="rounded-xl border border-accent/40 bg-accent/5 p-3">
           <div className="font-medium">XML do Rekordbox <span className="text-xs text-accent">recomendado</span></div>

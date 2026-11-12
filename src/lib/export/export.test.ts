@@ -18,6 +18,10 @@ describe("exportação", () => {
     expect(toCSV(seq, tracks).split("\n")[0]).toContain('"#";"Título";"Artista"');
     expect(toM3U8(seq, tracks)).toContain("#EXTINF:400,Cola - CamelPhat & Elderbrook");
   });
+  it("nome de arquivo presumido: Título - Artista", () => {
+    expect(toM3U8(seq, tracks, "D:\\Musicas")).toContain("D:\\Musicas\\Opus <Live> - Eric Prydz.mp3".replace("<", "_").replace(">", "_"));
+    expect(toRekordboxXml(seq, tracks)).toContain("Opus%20_Live_%20-%20Eric%20Prydz.mp3");
+  });
   it("caminhos no formato do Rekordbox", () => {
     expect(toRekordboxLocation("D:\\Músicas\\House\\A B.mp3")).toBe("file://localhost/D:/M%C3%BAsicas/House/A%20B.mp3");
     expect(toRekordboxLocation("/Users/dj/Music/a.mp3")).toBe("file://localhost/Users/dj/Music/a.mp3");
