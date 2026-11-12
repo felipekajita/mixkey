@@ -83,7 +83,7 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
 export function reprocess(id: string) {
   useStore.getState().updateTrack(id, (t) => ({
     status: "pending", manualKey: false, manualBpm: false, manualEnergy: false,
-    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source) || r.source.startsWith("store-")),
+    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source) || r.source.startsWith("store-") || r.source.startsWith("essentia-listen")),
   }));
   enqueue(() => processTrack(id, true));
 }
@@ -284,6 +284,18 @@ export function importStoreTracks(p: StorePayload): { merged: number; added: num
     }
   }
   return { merged, added: fresh.length };
+}
+
+/** Resultado do "Ouvir e analisar" vira uma leitura da faixa */
+export function addListenReading(id: string, a: { key?: string; bpm?: number; segments?: number; keyAgree?: number; durationSec?: number; danceability?: number }, kind: "tab" | "mic") {
+  addReadings(id, [{
+    source: `essentia-listen-${kind}`,
+    label: `Escuta ao vivo (${kind === "tab" ? "aba" : "microfone"})`,
+    key: a.key, bpm: a.bpm,
+    note: `${Math.round(a.durationSec ?? 0)} s ouvidos em ${a.segments ?? 1} trecho(s); key igual em ${a.keyAgree ?? 0}/${a.segments ?? 1}`,
+  }]);
+  if (a.danceability != null) upd(id, { danceability: a.danceability });
+  applyConsensus(id);
 }
 
 /** Volta campos editados à mão para o valor automático (consenso das fontes) */

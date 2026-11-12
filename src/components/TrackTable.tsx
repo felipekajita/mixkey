@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trash2, ExternalLink, AlertCircle, Search, Play, Pause } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, ExternalLink, AlertCircle, Search, Play, Pause, Headphones } from "lucide-react";
+import ListenModal from "./ListenModal";
 import { useStore } from "@/lib/store";
 import type { Track } from "@/lib/types";
 import { Button, Card, Modal, inputCls, fieldCls, cn } from "./ui";
@@ -104,6 +105,7 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
   const links = verifyLinks(t);
   const [title, setTitle] = useState(t.title);
   const [artist, setArtist] = useState(t.artist);
+  const [listen, setListen] = useState(false);
   return (
     <Modal open onClose={onClose} title="Detalhes da faixa" wide>
       <div className="flex flex-col sm:flex-row gap-5">
@@ -140,7 +142,10 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
           </div>
           {t.bpmNote && !t.manualBpm && <div className="text-xs text-amber-400">⚠ {t.bpmNote}</div>}
           <div>
-            <Button size="sm" onClick={() => reprocess(t.id)}><RefreshCw size={14} /> Buscar novamente</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => reprocess(t.id)}><RefreshCw size={14} /> Buscar novamente</Button>
+              <Button size="sm" variant="primary" onClick={() => setListen(true)}><Headphones size={14} /> Ouvir e analisar</Button>
+            </div>
             <div className="text-[11px] text-muted mt-1">Busca tudo de novo (ignora o cache) e descarta suas edições manuais de key, BPM e energia.</div>
           </div>
         </div>
@@ -183,6 +188,7 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
         })}
       </div>
 
+      <ListenModal t={t} open={listen} onClose={() => setListen(false)} />
       <h4 className="font-semibold mt-6 mb-2">Verificar manualmente</h4>
       <div className="flex flex-wrap gap-1.5">
         {[...links.keybpm, ...links.streaming].map((l) => (
@@ -204,7 +210,7 @@ function EditedTag({ onReset }: { onReset: () => void }) {
 
 /** Grupos de fontes para o comparativo */
 const GROUPS: { id: string; label: string; hint: string; match: (src: string) => boolean }[] = [
-  { id: "mine", label: "Análise do MixKey", hint: "áudio do arquivo e prévias de 30 s", match: (x) => x.startsWith("essentia") },
+  { id: "mine", label: "Análise do MixKey", hint: "áudio do arquivo, prévias de 30 s e escuta ao vivo", match: (x) => x.startsWith("essentia") },
   { id: "platforms", label: "Plataformas / serviços", hint: "ReccoBeats (dados do Spotify) e Deezer", match: (x) => x === "reccobeats" || x === "deezer" },
   { id: "stores", label: "Lojas oficiais", hint: "Beatport e similares (importados)", match: (x) => x.startsWith("store") },
   { id: "yours", label: "Seus dados", hint: "tags do arquivo (Rekordbox/Mixed In Key) e sua lista", match: (x) => x === "tags" || x === "list" },

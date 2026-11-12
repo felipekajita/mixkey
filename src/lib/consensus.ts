@@ -3,7 +3,7 @@ import { resolveBpm } from "./bpmOctave";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
-  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, "essentia-preview": 1.8, deezer: 1,
+  list: 4, tags: 3, essentia: 3, "essentia-listen-tab": 3, "essentia-listen-mic": 2, reccobeats: 2.5, "essentia-preview": 1.8, deezer: 1,
 };
 const COVER_ORDER = ["tags", "store-beatport", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 

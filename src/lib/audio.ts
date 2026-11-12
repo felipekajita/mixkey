@@ -24,6 +24,8 @@ export interface AnalysisResult { key?: string; keyStrength?: number; bpm?: numb
 const SR = 44100;
 
 /** Decodifica e reamostra para 44.1 kHz mono */
+export const SAMPLE_RATE = SR;
+
 async function decodeMono(buf: ArrayBuffer): Promise<{ data: Float32Array; duration: number }> {
   const ctx = new OfflineAudioContext(1, SR, SR);
   const audio = await ctx.decodeAudioData(buf);
@@ -64,9 +66,19 @@ function toCamelot(key?: string, scale?: string): string | undefined {
  *   — key pela soma da "força" de cada trecho, BPM pela mediana (meio/dobro unificados).
  */
 export async function analyzeAudio(buf: ArrayBuffer): Promise<AnalysisResult> {
-  const { data, duration } = await decodeMono(buf);
-  const segLen = Math.min(data.length, 60 * SR);
-  const starts = duration <= 40 ? [0] : [0.15, 0.45, 0.75].map((f) => Math.max(0, Math.min(data.length - segLen, Math.round(data.length * f))));
+  const { data } = await decodeMono(buf);
+  return analyzeSamples(data);
+}
+
+/**
+ * Analisa amostras mono a 44,1 kHz (arquivo decodificado ou áudio captado ao vivo).
+ * `segSec`: tamanho de cada trecho; `positions`: onde começam (fração do total).
+ */
+export async function analyzeSamples(data: Float32Array, opts: { segSec?: number; positions?: number[] } = {}): Promise<AnalysisResult> {
+  const duration = data.length / SR;
+  const segLen = Math.min(data.length, (opts.segSec ?? 60) * SR);
+  const positions = opts.positions ?? [0.15, 0.45, 0.75];
+  const starts = duration <= 40 ? [0] : positions.map((f) => Math.max(0, Math.min(data.length - segLen, Math.round(data.length * f))));
   const results: any[] = [];
   let loud = 0;
   for (const st of starts) {

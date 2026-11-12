@@ -41,6 +41,15 @@ O Beatport bloqueia leitura automática, então o MixKey não consulta o site so
 
 Faixas que já estão na biblioteca ganham os dados do Beatport como fonte "Lojas oficiais", que tem peso alto na votação. As demais são adicionadas. Nos detalhes da faixa, o **Comparativo** mostra lado a lado a análise do MixKey, as plataformas, as lojas oficiais e os seus dados.
 
+## Ouvir e analisar (música completa)
+
+Para faixas que só existem online, como no YouTube, abra os detalhes da faixa e clique em **🎧 Ouvir e analisar**. Você toca a música e o MixKey escuta por 60 a 120 s, analisa vários trechos e adiciona o resultado como uma fonte "Escuta ao vivo", que entra na votação e no Comparativo.
+
+- **Aba do navegador** (recomendado; Chrome ou Edge no computador): toque a música em outra aba, clique em Começar, escolha a aba e marque "Compartilhar áudio da aba".
+- **Microfone** (qualquer navegador, inclusive celular): para música tocando em caixa de som, vinil etc. Tem um pouco mais de ruído, por isso pesa menos na votação.
+
+O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as amostras são descartadas logo em seguida.
+
 ## Planilhas: mapeamento de colunas
 
 Ao importar CSV/XLSX ou colar células de planilha, o MixKey detecta sozinho o que é título, artista, key, BPM e duração. Na pré-visualização, cada coluna tem um seletor para corrigir a detecção. Também dá para marcar ou desmarcar "Primeira linha é cabeçalho".

@@ -91,3 +91,20 @@ describe("loja oficial vs. prévias", () => {
     expect(c.key).toBe("11B");
   });
 });
+
+describe("escuta ao vivo", () => {
+  it("escuta pela aba vence uma prévia isolada e entra no grupo de análise", () => {
+    const c = computeConsensus([
+      { source: "essentia-listen-tab", label: "Escuta", key: "8A", bpm: 124 },
+      { source: "essentia-preview-deezer", label: "D", key: "9A", bpm: 124 },
+    ]);
+    expect(c.key).toBe("8A");
+  });
+  it("microfone pesa menos que a aba", () => {
+    const c = computeConsensus([
+      { source: "essentia-listen-mic", label: "Mic", key: "8A" },
+      { source: "essentia-listen-tab", label: "Aba", key: "9A" },
+    ]);
+    expect(c.key).toBe("9A");
+  });
+});
