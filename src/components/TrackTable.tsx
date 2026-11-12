@@ -211,9 +211,9 @@ function EditedTag({ onReset }: { onReset: () => void }) {
 /** Grupos de fontes para o comparativo */
 const GROUPS: { id: string; label: string; hint: string; match: (src: string) => boolean }[] = [
   { id: "mine", label: "Análise do MixKey", hint: "áudio do arquivo, prévias de 30 s e escuta ao vivo", match: (x) => x.startsWith("essentia") },
-  { id: "platforms", label: "Plataformas / serviços", hint: "ReccoBeats (dados do Spotify) e Deezer", match: (x) => x === "reccobeats" || x === "deezer" },
+  { id: "platforms", label: "Plataformas / serviços", hint: "ReccoBeats e SongBPM (dados do Spotify) e Deezer", match: (x) => x === "reccobeats" || x === "deezer" || x === "songbpm" },
   { id: "stores", label: "Lojas oficiais", hint: "Beatport e similares (importados)", match: (x) => x.startsWith("store") },
-  { id: "yours", label: "Seus dados", hint: "tags do arquivo (Rekordbox/Mixed In Key) e sua lista", match: (x) => x === "tags" || x === "list" },
+  { id: "yours", label: "Seus dados", hint: "tags do arquivo (Rekordbox/Mixed In Key), biblioteca do Mixxx e sua lista", match: (x) => x === "tags" || x === "list" || x === "mixxx" },
 ];
 
 function Comparison({ t }: { t: Track }) {

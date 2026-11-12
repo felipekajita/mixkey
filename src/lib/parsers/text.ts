@@ -18,6 +18,7 @@ export interface ParsedTrack {
   previewUrl?: string;
   sourceUrl?: string;
   sourceLabel?: string;
+  filePath?: string;      // caminho completo no computador (biblioteca do Mixxx)
 }
 
 export type Field = "title" | "artist" | "key" | "bpm" | "duration" | "energy" | "file" | "genre" | "trackartist" | "ignore";

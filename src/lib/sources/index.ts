@@ -6,6 +6,7 @@ import { spotify } from "./spotify";
 import { lastfm } from "./lastfm";
 import { reccobeats } from "./reccobeats";
 import { youtubeMusic } from "./youtube-music";
+import { songbpm } from "./songbpm";
 
 export interface SourceDef {
   id: string;
@@ -19,7 +20,7 @@ export interface SourceDef {
 
 export { pickBest } from "./pick";
 
-export const SOURCES: SourceDef[] = [deezer, spotify, reccobeats, itunes, musicbrainz, lastfm, youtubeMusic];
+export const SOURCES: SourceDef[] = [deezer, spotify, reccobeats, itunes, musicbrainz, lastfm, songbpm, youtubeMusic];
 
 export async function lookupAll(q: LookupQuery, opts: { lite?: boolean; only?: string[] } = {}): Promise<SourceReading[]> {
   const list = SOURCES.filter((s) => s.enabled())

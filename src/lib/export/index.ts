@@ -9,6 +9,9 @@ export const trackLabel = (t: Pick<Track, "title" | "artist">) => `${t.title}${t
 /** Nome de arquivo presumido quando a faixa veio de lista/link: "Título - Artista.mp3" */
 const guessFile = (t: Track) => t.fileName || `${trackLabel(t)}.mp3`.replace(/[\\/:*?"<>|]/g, "_");
 
+/** Caminho final: o caminho completo conhecido (Mixxx) ou pasta informada + nome do arquivo */
+const trackPath = (t: Track, baseFolder: string) => t.filePath || joinPath(baseFolder, guessFile(t));
+
 function joinPath(baseFolder: string, file: string) {
   const sep = baseFolder.includes("\\") ? "\\" : "/";
   return baseFolder ? baseFolder.replace(/[\\/]+$/, "") + sep + file : file;
@@ -19,7 +22,7 @@ export function toM3U8(seq: SequenceResult, tracks: Track[], baseFolder = ""): s
   tracks.forEach((t, i) => {
     lines.push(`#EXTINF:${Math.round(t.durationSec ?? -1)},${trackLabel(t)}`);
     lines.push(`# MixKey ${i + 1}: ${t.key ?? "?"} · ${t.bpm ?? "?"} BPM · energia ${t.energy ?? "?"}`);
-    lines.push(joinPath(baseFolder, guessFile(t)));
+    lines.push(trackPath(t, baseFolder));
   });
   return lines.join("\n") + "\n";
 }
@@ -79,7 +82,7 @@ export function toRekordboxXml(seq: SequenceResult, tracks: Track[], baseFolder 
       Tonality: camelotToMusical(t.key) || undefined,
       Comments: comment,
       Rating: 0,
-      Location: toRekordboxLocation(joinPath(baseFolder, file)),
+      Location: toRekordboxLocation(trackPath(t, baseFolder)),
     };
     const a = Object.entries(attrs).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => `${k}="${xmlEsc(v)}"`).join(" ");
     return `    <TRACK ${a} />`;

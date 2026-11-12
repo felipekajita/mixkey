@@ -6,3 +6,4 @@ public/essentia
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+public/sqljs

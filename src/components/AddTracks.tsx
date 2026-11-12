@@ -9,6 +9,7 @@ import { parseStorePayload, type StorePayload } from "@/lib/store-import/parse";
 import { useStore } from "@/lib/store";
 import { matchScore } from "@/lib/match";
 import { parseListFile, type ParsedInput } from "@/lib/parsers/files";
+import type { MixxxGroup } from "@/lib/parsers/mixxx";
 import { parseText, parseTextTable, mapRows, FIELD_LABELS, type ParsedTrack, type TableInfo, type Field } from "@/lib/parsers/text";
 import { extractUrls, resolveLinks, resultsToParsed } from "@/lib/links/client";
 import type { ResolveResult } from "@/lib/links/types";
@@ -16,7 +17,7 @@ import { Cover, KeyBadge } from "./bits";
 import { formatDuration } from "@/lib/bpm";
 
 type Mode = "audio" | "list" | "paste" | "links";
-const LIST_EXT = /\.(txt|csv|tsv|xlsx|xlsm|xls|ods|m3u8?|xml|json)$/i;
+const LIST_EXT = /\.(txt|csv|tsv|xlsx|xlsm|xls|ods|m3u8?|xml|json|sqlite|sqlite3|db)$/i;
 
 const EXAMPLE = `CamelPhat & Elderbrook - Cola
 Lane 8 - Brightest Lights 8A 122
@@ -31,7 +32,7 @@ https://www.youtube.com/watch?v=...`;
 
 const PLATFORM_CHIPS = ["Spotify", "Deezer", "Apple Music", "YouTube", "YouTube Music", "SoundCloud", "Beatport*", "Tidal*", "Bandcamp*", "Shazam*"];
 
-interface Preview { tracks: ParsedTrack[]; table?: TableInfo; links?: ResolveResult[]; store?: StorePayload }
+interface Preview { tracks: ParsedTrack[]; table?: TableInfo; links?: ResolveResult[]; store?: StorePayload; groups?: MixxxGroup[]; group?: number; source?: string }
 
 export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   const [mode, setMode] = useState<Mode>("audio");
@@ -60,7 +61,12 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   }, [notify]);
 
   // faixas exibidas: se houver tabela, recalcula a partir do mapeamento escolhido
-  const tracks = useMemo(() => (preview?.table ? mapRows(preview.table) : preview?.tracks ?? []), [preview]);
+  const tracks = useMemo(() => {
+    if (preview?.table) return mapRows(preview.table);
+    const all = preview?.tracks ?? [];
+    const g = preview?.groups && preview.group != null ? preview.groups[preview.group] : undefined;
+    return g ? g.trackIdx.map((i) => all[i]) : all;
+  }, [preview]);
 
   async function handleFiles(list: FileList | File[]) {
     const arr = Array.from(list);
@@ -68,9 +74,10 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
     const lists = arr.filter((f) => LIST_EXT.test(f.name));
     if (audio.length) notify(`${addAudioFiles(audio)} arquivo(s) de áudio adicionados — analisando…`);
     if (lists.length) {
-      const parsed = await Promise.all(lists.map((f) => parseListFile(f).catch((): ParsedInput => ({ tracks: [] }))));
+      const parsed = await Promise.all(lists.map((f) => parseListFile(f).catch((e): ParsedInput => { notify((e as Error).message || "Não consegui ler o arquivo."); return { tracks: [] }; })));
       // um único arquivo em tabela → permite mapear colunas
-      if (parsed.length === 1 && parsed[0].table) setPreview({ tracks: parsed[0].tracks, table: parsed[0].table });
+      if (parsed.length === 1 && parsed[0].groups) setPreview({ tracks: parsed[0].tracks, groups: parsed[0].groups, source: parsed[0].source });
+      else if (parsed.length === 1 && parsed[0].table) setPreview({ tracks: parsed[0].tracks, table: parsed[0].table });
       else {
         const all = parsed.flatMap((p) => p.tracks);
         all.length ? setPreview({ tracks: all }) : notify("Não encontrei faixas no arquivo.");
@@ -166,7 +173,7 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
           ) : (
             <>
               <div className="font-medium">Arraste uma lista ou planilha</div>
-              <div className="text-sm text-muted mt-1">TXT, CSV, XLSX/XLS/ODS, M3U/M3U8, XML do Rekordbox, JSON</div>
+              <div className="text-sm text-muted mt-1">TXT, CSV, XLSX/XLS/ODS, M3U/M3U8, XML do Rekordbox, biblioteca do Mixxx (mixxxdb.sqlite), JSON</div>
             </>
           )}
           {mode === "audio" && (
@@ -210,7 +217,7 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
 
       <input ref={audioRef} type="file" multiple accept="audio/*,.flac,.aiff,.aif,.m4a,.opus" className="hidden" onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
       <input ref={dirRef} type="file" multiple className="hidden" {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
-      <input ref={listRef} type="file" multiple accept=".txt,.csv,.tsv,.xlsx,.xlsm,.xls,.ods,.m3u,.m3u8,.xml,.json" className="hidden" onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={listRef} type="file" multiple accept=".txt,.csv,.tsv,.xlsx,.xlsm,.xls,.ods,.m3u,.m3u8,.xml,.json,.sqlite,.sqlite3,.db" className="hidden" onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
 
       {preview?.store && <StorePreview p={preview.store} onCancel={() => setPreview(null)} onConfirm={confirmPreview} />}
       {preview && !preview.store && (
@@ -223,6 +230,16 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
             </div>
           </div>
 
+          {preview.groups && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted">{preview.source ?? "Biblioteca"}: importar</span>
+              <select className="h-8 rounded-lg border border-line bg-panel2 px-2 text-sm" value={preview.group ?? -1} onChange={(e) => setPreview({ ...preview, group: +e.target.value < 0 ? undefined : +e.target.value })}>
+                <option value={-1}>Biblioteca inteira ({preview.tracks.length})</option>
+                {preview.groups.map((g, i) => <option key={i} value={i}>{g.kind === "playlist" ? "Playlist" : "Crate"}: {g.name} ({g.trackIdx.length})</option>)}
+              </select>
+              <span className="text-xs text-muted">BPM e key vêm da análise do Mixxx; os caminhos dos arquivos são mantidos para exportar.</span>
+            </div>
+          )}
           {preview.table && <ColumnMapper table={preview.table} onField={setField} onHeader={setHeader} />}
 
           {linkErrors.length > 0 && (

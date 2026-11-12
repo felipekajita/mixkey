@@ -64,13 +64,14 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
     if (existing.has(k)) continue;
     existing.add(k);
     const readings: SourceReading[] = [];
-    if (p.key || p.bpm) readings.push({ source: "list", label: "Sua lista", key: p.key, bpm: p.bpm, durationSec: p.durationSec });
-    if (p.sourceUrl) readings.push({ source: "link", label: `Link (${p.sourceLabel ?? "colado"})`, coverUrl: p.coverUrl, durationSec: p.durationSec, isrc: p.isrc, previewUrl: p.previewUrl, url: p.sourceUrl });
+    if ((p.key || p.bpm) && p.sourceLabel === "Mixxx") readings.push({ source: "mixxx", label: "Mixxx (sua análise)", key: p.key, bpm: p.bpm, durationSec: p.durationSec, genres: p.genre ? [p.genre] : undefined });
+    else if (p.key || p.bpm) readings.push({ source: "list", label: "Sua lista", key: p.key, bpm: p.bpm, durationSec: p.durationSec });
+    if (p.sourceUrl && p.sourceLabel !== "Mixxx") readings.push({ source: "link", label: `Link (${p.sourceLabel ?? "colado"})`, coverUrl: p.coverUrl, durationSec: p.durationSec, isrc: p.isrc, previewUrl: p.previewUrl, url: p.sourceUrl });
     tracks.push(blankTrack({
       title: p.title, artist: p.artist, version: p.version ?? splitVersion(p.title).version, durationSec: p.durationSec,
       key: p.key, bpm: p.bpm, energy: p.energy, manualEnergy: p.energy != null, fileName: p.fileName,
       genres: p.genre ? [p.genre] : undefined, origin, readings,
-      coverUrl: p.coverUrl, isrc: p.isrc, previewUrl: p.previewUrl,
+      coverUrl: p.coverUrl, isrc: p.isrc, previewUrl: p.previewUrl, filePath: p.filePath,
       keyConfidence: p.key ? "medium" : "none", bpmConfidence: p.bpm ? "medium" : "none",
     }));
   }
@@ -83,7 +84,7 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
 export function reprocess(id: string) {
   useStore.getState().updateTrack(id, (t) => ({
     status: "pending", manualKey: false, manualBpm: false, manualEnergy: false,
-    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source) || r.source.startsWith("store-") || r.source.startsWith("essentia-listen")),
+    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link", "mixxx"].includes(r.source) || r.source.startsWith("store-") || r.source.startsWith("essentia-listen")),
   }));
   enqueue(() => processTrack(id, true));
 }

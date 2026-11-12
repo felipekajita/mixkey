@@ -1,11 +1,16 @@
 import Papa from "papaparse";
 import { parseText, parseTextTable, rowsToTracks, detectTable, mapRows, type ParsedTrack, type TableInfo } from "./text";
 
-export interface ParsedInput { tracks: ParsedTrack[]; table?: TableInfo }
+export interface ParsedInput { tracks: ParsedTrack[]; table?: TableInfo; groups?: import("./mixxx").MixxxGroup[]; source?: string }
 
 /** Lê arquivos de lista: .txt, .csv, .tsv, .m3u/.m3u8, .xlsx/.xls/.ods, .xml (Rekordbox), .json */
 export async function parseListFile(file: File): Promise<ParsedInput> {
   const name = file.name.toLowerCase();
+  if (/\.(sqlite|sqlite3|db)$/.test(name)) {
+    const { readMixxxDb } = await import("./mixxx");
+    const lib = await readMixxxDb(await file.arrayBuffer());
+    return { tracks: lib.tracks, groups: lib.groups, source: "Mixxx" };
+  }
   const fromTable = (t: TableInfo | null): ParsedInput => (t ? { tracks: mapRows(t), table: t } : { tracks: [] });
   if (/\.(xlsx|xlsm|xls|ods|numbers)$/.test(name)) {
     const XLSX = await import("xlsx");

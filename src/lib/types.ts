@@ -36,6 +36,7 @@ export interface Track {
   genres?: string[];
   isrc?: string;
   fileName?: string;       // nome do arquivo local (para M3U8)
+  filePath?: string;       // caminho completo, quando conhecido (ex.: biblioteca do Mixxx)
   origin: "audio" | "list" | "suggestion";
   readings: SourceReading[];
   keyConfidence: Confidence;

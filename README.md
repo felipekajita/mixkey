@@ -52,6 +52,15 @@ Para faixas que só existem online, como no YouTube, abra os detalhes da faixa e
 
 O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as amostras são descartadas logo em seguida.
 
+## Biblioteca do Mixxx
+
+Na aba **Lista**, envie o arquivo `mixxxdb.sqlite` do Mixxx:
+- Windows: `%LOCALAPPDATA%\Mixxx\mixxxdb.sqlite`
+- macOS: `~/Library/Containers/org.mixxx.mixxx/Data/Library/Application Support/Mixxx/mixxxdb.sqlite` (ou `~/Library/Application Support/Mixxx/`)
+- Linux: `~/.mixxx/mixxxdb.sqlite`
+
+Dá para importar a biblioteca inteira ou só uma playlist ou crate. BPM e key vêm da análise do Mixxx e entram como fonte "Seus dados". Os caminhos dos arquivos são mantidos, então o M3U8 e o XML exportados já apontam para os arquivos certos. O arquivo é lido no navegador e não é enviado.
+
 ## Planilhas: mapeamento de colunas
 
 Ao importar CSV/XLSX ou colar células de planilha, o MixKey detecta sozinho o que é título, artista, key, BPM e duração. Na pré-visualização, cada coluna tem um seletor para corrigir a detecção. Também dá para marcar ou desmarcar "Primeira linha é cabeçalho".
@@ -91,6 +100,7 @@ npm test                     # testes unitários
 | YouTube Music (site) | — | capa |
 | Spotify | `SPOTIFY_CLIENT_ID/SECRET` | capa, ISRC, playlists inteiras, busca extra para a ReccoBeats |
 | ReccoBeats | — | **key, BPM, energia** (por ID do Spotify, ISRC ou nome) |
+| SongBPM (songbpm.com) | — | key, BPM (dados do Spotify; confirma a ReccoBeats) |
 | Last.fm | `LASTFM_API_KEY` | faixas similares, gêneros |
 
 **Observações:**
