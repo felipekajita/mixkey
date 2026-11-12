@@ -9,8 +9,9 @@ import { analyzePreview } from "@/lib/audio";
 import { transitionInfo } from "@/lib/sequencer";
 import { addParsedTracks, dedupeKey } from "@/lib/pipeline";
 import type { Track } from "@/lib/types";
+import { genreProfile, genreScore, genreLabel, classifyGenre } from "@/lib/genre";
 
-interface Sug { title: string; artist: string; coverUrl?: string; previewUrl?: string; url?: string; durationSec?: number; reason: string; key?: string; bpm?: number; analyzing?: boolean; fit?: { score: number; with: string } }
+interface Sug { title: string; artist: string; coverUrl?: string; previewUrl?: string; url?: string; durationSec?: number; reason: string; genres?: string[]; key?: string; bpm?: number; analyzing?: boolean; fit?: { score: number; with: string } }
 
 export default function Suggestions({ notify }: { notify: (m: string) => void }) {
   const tracks = useStore((s) => s.tracks);
@@ -18,6 +19,14 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [onlyFit, setOnlyFit] = useState(false);
+  const [sameGenre, setSameGenre] = useState(true);
+  const profile = useMemo(() => genreProfile(tracks), [tracks]);
+  // tags mais frequentes da biblioteca (para buscar destaques do gênero no Last.fm)
+  const topTags = useMemo(() => {
+    const c = new Map<string, number>();
+    tracks.forEach((t) => t.genres?.forEach((g) => { const k = g.toLowerCase(); const cl = classifyGenre(k); if (cl && cl.family !== "electronic") c.set(k, (c.get(k) ?? 0) + 1); }));
+    return [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([g]) => g);
+  }, [tracks]);
   const { playing, toggle } = usePreview();
 
   const topArtists = useMemo(() => {
@@ -30,7 +39,7 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
     setLoading(true);
     try {
       const sample = tracks.filter((t) => t.artist).slice(0, 4).map((t) => `${t.artist} - ${t.title}`);
-      const r = await fetch(`/api/similar?artists=${encodeURIComponent(topArtists.join("|"))}&tracks=${encodeURIComponent(sample.join("|"))}`);
+      const r = await fetch(`/api/similar?artists=${encodeURIComponent(topArtists.join("|"))}&tracks=${encodeURIComponent(sample.join("|"))}&genres=${encodeURIComponent(topTags.join("|"))}`);
       const { suggestions } = (await r.json()) as { suggestions: Sug[] };
       const have = new Set(tracks.map(dedupeKey));
       const fresh = suggestions.filter((s) => !have.has(dedupeKey(s)));
@@ -65,33 +74,52 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
   }
 
   function add(s: Sug) {
-    addParsedTracks([{ title: s.title, artist: s.artist, key: s.key, bpm: s.bpm, durationSec: s.durationSec }], "suggestion");
+    addParsedTracks([{ title: s.title, artist: s.artist, key: s.key, bpm: s.bpm, durationSec: s.durationSec, genre: s.genres?.[0] }], "suggestion");
     setAdded((a) => new Set(a).add(dedupeKey(s)));
     notify(`“${s.title}” adicionada à biblioteca`);
   }
 
   if (!tracks.length) return null;
-  const shown = (onlyFit ? items.filter((s) => (s.fit?.score ?? 0) >= 75) : items).sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
+  // nota final = key/BPM (55%) + gênero (45%); gênero desconhecido pesa um pouco contra
+  const scored = items.map((s) => {
+    const g = genreScore(profile, s.genres);
+    const harm = s.fit?.score;
+    const total = harm == null ? (g == null ? -1 : g * 45) : g == null ? harm * 0.75 : harm * 0.55 + g * 45;
+    return { s, g, total };
+  });
+  const shown = scored
+    .filter(({ g }) => !sameGenre || g == null || g >= 0.35)
+    .filter(({ s, g }) => !onlyFit || ((s.fit?.score ?? 0) >= 75 && (g == null || g >= 0.5)))
+    .sort((a, b) => b.total - a.total);
+  const hidden = items.length - scored.filter(({ g }) => !sameGenre || g == null || g >= 0.35).length;
 
   return (
     <Card className="p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold text-lg flex items-center gap-2"><Sparkles size={18} className="text-accent" /> Sugestões para o set</h2>
-          <p className="text-sm text-muted">Faixas dos mesmos artistas e de artistas parecidos{topArtists.length ? ` (${topArtists.slice(0, 3).join(", ")}…)` : ""}, ordenadas pela compatibilidade com a sua biblioteca.</p>
+          <p className="text-sm text-muted">Faixas dos mesmos artistas, de artistas parecidos{topArtists.length ? ` (${topArtists.slice(0, 3).join(", ")}…)` : ""} e destaques dos seus gêneros, ordenadas por <b>key/BPM + gênero</b>.</p>
+          <p className="text-xs text-muted mt-0.5">
+            {profile.total ? <>Gêneros da sua biblioteca: {profile.top.slice(0, 4).map((g) => <span key={g} className="inline-block rounded-full border border-line px-1.5 mr-1">{g}</span>)}</> : "Ainda sem gênero identificado na biblioteca (o gênero vem do Last.fm, Apple Music, Beatport ou das tags)."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {items.length > 0 && (
-            <label className="text-sm flex items-center gap-2 text-muted"><input type="checkbox" checked={onlyFit} onChange={(e) => setOnlyFit(e.target.checked)} /> Só compatíveis</label>
+            <>
+              <label className="text-sm flex items-center gap-2 text-muted" title="Esconde sugestões de gêneros sem relação com a sua biblioteca"><input type="checkbox" checked={sameGenre} onChange={(e) => setSameGenre(e.target.checked)} /> Mesmo gênero</label>
+              <label className="text-sm flex items-center gap-2 text-muted"><input type="checkbox" checked={onlyFit} onChange={(e) => setOnlyFit(e.target.checked)} /> Só compatíveis</label>
+            </>
           )}
           <Button onClick={load} disabled={loading || !topArtists.length}>{loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />} {items.length ? "Atualizar" : "Buscar sugestões"}</Button>
         </div>
       </div>
 
+      {sameGenre && hidden > 0 && <p className="text-xs text-muted mt-3">{hidden} sugestão(ões) de outros gêneros escondida(s). Desmarque “Mesmo gênero” para ver todas.</p>}
       {shown.length > 0 && (
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[28rem] overflow-auto scroll-thin pr-1">
-          {shown.map((s) => {
+          {shown.map(({ s, g }) => {
             const done = added.has(dedupeKey(s));
+            const gl = genreLabel(s.genres)[0];
             return (
               <div key={`${s.artist}-${s.title}`} className="flex items-center gap-3 rounded-xl border border-line p-2 group">
                 <div className="relative">
@@ -114,7 +142,10 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
                       </>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted truncate">{s.reason}</div>
+                  <div className="text-[11px] text-muted truncate">
+                    {gl && <span title={`Gênero: ${(s.genres ?? []).join(", ")} · combina ${g == null ? "?" : Math.round(g * 100) + "%"} com a biblioteca`} className={cn("mr-1 rounded px-1 border", g == null ? "border-line" : g >= 0.6 ? "border-emerald-500/40 text-emerald-400" : g >= 0.35 ? "border-amber-500/40 text-amber-400" : "border-red-500/40 text-red-400")}>{gl}</span>}
+                    {s.reason}
+                  </div>
                 </div>
                 <button disabled={done} onClick={() => add(s)} className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", done ? "text-emerald-400" : "bg-panel2 hover:bg-accent hover:text-white")} aria-label="Adicionar">
                   {done ? <Check size={16} /> : <Plus size={16} />}

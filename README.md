@@ -14,7 +14,7 @@ Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **col
    - **Vibes:** Jornada clássica, Warm-up, Peak time, Até o clímax, Sunset/After, Montanha-russa, Esquenta, Lounge e Fluxo harmônico puro;
    - **Final do set:** no clímax, animado, mais leve ou bem suave.
 4. Mostra o set de forma visual: timeline com as transições (✓ mesmo tom, ↕ relativa, ⚡ boost, ⚠ conflito), dicas de mixagem, gráfico de energia, caminho na roda Camelot, grade de capas e **modo cabine** em tela cheia para usar ao vivo.
-5. Exporta **XML do Rekordbox** (playlist já com BPM, tom e dica de transição em cada faixa) e **M3U8**, além de CSV e texto, sempre no formato "Título - Artista". Sugere **faixas dos mesmos artistas ou de artistas parecidos**, com prévia e nota de compatibilidade.
+5. Exporta **XML do Rekordbox** (playlist já com BPM, tom e dica de transição em cada faixa) e **M3U8**, além de CSV e texto, sempre no formato "Título - Artista". Sugere **faixas dos mesmos artistas, de artistas parecidos e destaques dos seus gêneros**. Cada sugestão recebe uma nota que combina key/BPM (55%) e **gênero** (45%), e a opção "Mesmo gênero" esconde estilos sem relação com a sua biblioteca. O gênero vem do Last.fm, Apple Music, Deezer, Beatport e Mixxx.
 
 ## Colar links
 
