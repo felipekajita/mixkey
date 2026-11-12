@@ -3,9 +3,9 @@ import { normalizeBpm } from "./bpm";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
-  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, beatport: 2.5, tunebat: 2, getsongkey: 2, "essentia-preview": 1.8, deezer: 1,
+  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, beatport: 2.5, tunebat: 2, "essentia-preview": 1.8, deezer: 1,
 };
-const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "beatport", "tunebat", "ytmusic", "lastfm", "musicbrainz", "google"];
+const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "beatport", "tunebat", "ytmusic", "lastfm", "musicbrainz"];
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
@@ -69,12 +69,10 @@ export function verifyLinks(t: { title: string; artist: string }) {
   return {
     keybpm: [
       { label: "Tunebat", url: `https://tunebat.com/Search?q=${enc(q)}` },
-      { label: "GetSongKey", url: `https://getsongkey.com/search?q=${enc(q)}` },
       { label: "Beatport", url: `https://www.beatport.com/search?q=${enc(q)}` },
       { label: "VocalRemover", url: "https://vocalremover.org/key-bpm-finder" },
       { label: "Ghost Production", url: "https://theghostproduction.com/bpm-and-key-finder/" },
       { label: "LANDR", url: "https://samples.landr.com/key-bpm-finder" },
-      { label: "GetSongKey (arquivo)", url: "https://getsongkey.com/tools/key-finder" },
     ],
     streaming: [
       { label: "Spotify", url: `https://open.spotify.com/search/${enc(q)}` },
@@ -85,7 +83,6 @@ export function verifyLinks(t: { title: string; artist: string }) {
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${enc(q)}` },
       { label: "SoundCloud", url: `https://soundcloud.com/search?q=${enc(q)}` },
       { label: "Yandex Music", url: `https://music.yandex.com/search?text=${enc(q)}` },
-      { label: "Google Imagens", url: `https://www.google.com/search?tbm=isch&q=${enc(q + " cover")}` },
     ],
   };
 }

@@ -94,24 +94,6 @@ export const tunebat = makeScraper("tunebat", "Tunebat", ["key", "bpm", "cover"]
   return fromHtml(await fetchText(`https://tunebat.com/Search?q=${encodeURIComponent(term)}`));
 }, (t) => `https://tunebat.com/Search?q=${encodeURIComponent(t)}`);
 
-export const getsongkey = makeScraper("getsongkey", "GetSongKey (site)", ["key", "bpm"], async (term) => {
-  const html = await fetchText(`https://getsongkey.com/search?q=${encodeURIComponent(term)}`);
-  const r = fromHtml(html);
-  if (r.length) return r;
-  // fallback: cartões de resultado em HTML
-  const $ = cheerio.load(html);
-  const out: Extracted[] = [];
-  $("a[href*='/song/']").each((_, a) => {
-    const el = $(a);
-    const text = el.closest("li,div,article").text().replace(/\s+/g, " ");
-    const key = /Key\s*:?\s*([A-G][#b♯♭]?\s*m?(?:inor|ajor)?)/i.exec(text)?.[1];
-    const bpm = /(\d{2,3})\s*BPM/i.exec(text)?.[1];
-    const [title, artist] = el.text().split(/\s+by\s+|\s+-\s+/);
-    if (title) out.push({ title: title.trim(), artist: (artist || "").trim(), key: parseKey(key), bpm: bpm ? +bpm : undefined, url: new URL(el.attr("href")!, "https://getsongkey.com").toString() });
-  });
-  return out;
-}, (t) => `https://getsongkey.com/search?q=${encodeURIComponent(t)}`);
-
 export const beatport = makeScraper("beatport", "Beatport", ["key", "bpm", "cover"], async (term) => {
   return fromHtml(await fetchText(`https://www.beatport.com/search/tracks?q=${encodeURIComponent(term)}`));
 }, (t) => `https://www.beatport.com/search?q=${encodeURIComponent(t)}`);
