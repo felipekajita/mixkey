@@ -108,3 +108,20 @@ describe("escuta ao vivo", () => {
     expect(c.key).toBe("9A");
   });
 });
+
+import { bpmAtSpeed } from "./listen";
+describe("escuta acelerada", () => {
+  it("divide o BPM medido pela velocidade", () => {
+    expect(bpmAtSpeed(186, 1.5)).toBe(124);
+    expect(bpmAtSpeed(155, 1.25)).toBe(124);
+    expect(bpmAtSpeed(180, 2)).toBe(90);
+    expect(bpmAtSpeed(124, 1)).toBe(124);
+  });
+  it("escuta a 2× pesa menos que a 1×", () => {
+    const c = computeConsensus([
+      { source: "essentia-listen-tab", label: "Aba 2x", key: "8A", weight: 0.8 },
+      { source: "essentia", label: "Arquivo", key: "9A" },
+    ]);
+    expect(c.key).toBe("9A");
+  });
+});

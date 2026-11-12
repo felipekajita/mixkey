@@ -48,6 +48,8 @@ Para faixas que só existem online, como no YouTube, abra os detalhes da faixa e
 - **Aba do navegador** (recomendado; Chrome ou Edge no computador): toque a música em outra aba, clique em Começar, escolha a aba e marque "Compartilhar áudio da aba".
 - **Microfone** (qualquer navegador, inclusive celular): para música tocando em caixa de som, vinil etc. Tem um pouco mais de ruído, por isso pesa menos na votação.
 
+**Mais rápido com música acelerada:** acelere no player do YouTube (⚙ → Velocidade) e informe a velocidade no MixKey (1,25×, 1,5× ou 2×). O YouTube acelera sem mudar o tom, então a key continua certa, e o MixKey divide o BPM medido pela velocidade. Ex.: 90 s de música a 1,5× levam 60 s. Para house/techno, use até 1,5×; 2× só para faixas até ~100 BPM. Escutas aceleradas pesam um pouco menos na votação (1,5× −10%, 2× −20%).
+
 O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as amostras são descartadas logo em seguida.
 
 ## Planilhas: mapeamento de colunas

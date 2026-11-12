@@ -6,6 +6,7 @@
  * as amostras ficam na memória até a análise (feita no navegador) e depois são descartadas.
  */
 import { analyzeSamples, SAMPLE_RATE, type AnalysisResult } from "./audio";
+import { normalizeBpm } from "./bpm";
 
 export type ListenKind = "tab" | "mic";
 
@@ -105,15 +106,34 @@ export async function startListening(
   };
 }
 
-/** Analisa o áudio captado em trechos de 30 s espalhados pelo que foi ouvido */
-export async function analyzeListened(samples: Float32Array): Promise<AnalysisResult> {
+/** BPM real a partir do medido numa reprodução acelerada (o YouTube acelera sem mudar o tom) */
+export function bpmAtSpeed(measured: number | undefined, rate: number): number | undefined {
+  if (!measured) return undefined;
+  return normalizeBpm(measured / rate);
+}
+
+export interface ListenResult extends AnalysisResult { rate: number; musicSec: number; warning?: string }
+
+/**
+ * Analisa o áudio captado em trechos espalhados pelo que foi ouvido.
+ * `rate`: velocidade em que a música tocou (1, 1.25, 1.5, 2). A key não muda
+ * (o player preserva o tom); o BPM medido é dividido pela velocidade.
+ */
+export async function analyzeListened(samples: Float32Array, rate = 1): Promise<ListenResult> {
   const sec = samples.length / SAMPLE_RATE;
-  if (sec < 15) throw new Error("Ouvi menos de 15 segundos. Deixe tocar um pouco mais.");
+  if (sec * rate < 15) throw new Error("Ouvi menos de 15 segundos de música. Deixe tocar um pouco mais.");
   let sum = 0;
   for (let i = 0; i < samples.length; i += 8) sum += samples[i] * samples[i];
   const rms = Math.sqrt(sum / (samples.length / 8));
   if (rms < 0.002) throw new Error("Não ouvi som. Confira se a música está tocando (e, na aba, se o áudio foi compartilhado).");
-  const n = sec >= 100 ? 4 : sec >= 60 ? 3 : 2;
+  // trechos de ~30 s de MÚSICA (a 2×, 15 s de áudio captado)
+  const segSec = Math.max(12, 30 / rate);
+  const n = sec >= segSec * 3.3 ? 4 : sec >= segSec * 2 ? 3 : 2;
   const positions = Array.from({ length: n }, (_, i) => i / n);
-  return analyzeSamples(samples, { segSec: 30, positions });
+  const a = await analyzeSamples(samples, { segSec, positions });
+  const raw = a.bpm;
+  return {
+    ...a, rate, musicSec: Math.round(sec * rate), bpm: bpmAtSpeed(raw, rate),
+    warning: raw && raw > 195 && rate > 1 ? `O BPM medido (${raw}) ficou perto do limite do detector. Para mais precisão, toque a ${rate >= 2 ? "1,5×" : "1×"}.` : undefined,
+  };
 }

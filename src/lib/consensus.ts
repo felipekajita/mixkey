@@ -18,7 +18,8 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
   // as prévias usam o mesmo detector: juntas valem no máximo 3 (uma opinião forte, não três)
   const nPrev = ok.filter((r) => r.source.startsWith("essentia-preview")).length;
   const prevScale = nPrev ? Math.min(1, 3 / (1.8 * nPrev)) : 1;
-  const w = (src: string) => weight(src) * (src.startsWith("essentia-preview") ? prevScale : 1);
+  const extra = new Map(ok.map((r) => [r.source, r.weight ?? 1]));
+  const w = (src: string) => weight(src) * (src.startsWith("essentia-preview") ? prevScale : 1) * (extra.get(src) ?? 1);
 
   // KEY
   const kv = new Map<string, number>();

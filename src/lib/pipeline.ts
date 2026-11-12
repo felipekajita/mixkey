@@ -287,12 +287,20 @@ export function importStoreTracks(p: StorePayload): { merged: number; added: num
 }
 
 /** Resultado do "Ouvir e analisar" vira uma leitura da faixa */
-export function addListenReading(id: string, a: { key?: string; bpm?: number; segments?: number; keyAgree?: number; durationSec?: number; danceability?: number }, kind: "tab" | "mic") {
+export function addListenReading(
+  id: string,
+  a: { key?: string; bpm?: number; segments?: number; keyAgree?: number; durationSec?: number; danceability?: number; rate?: number; musicSec?: number },
+  kind: "tab" | "mic",
+) {
+  const rate = a.rate ?? 1;
+  const speed = rate !== 1 ? ` a ${String(rate).replace(".", ",")}×` : "";
   addReadings(id, [{
     source: `essentia-listen-${kind}`,
     label: `Escuta ao vivo (${kind === "tab" ? "aba" : "microfone"})`,
     key: a.key, bpm: a.bpm,
-    note: `${Math.round(a.durationSec ?? 0)} s ouvidos em ${a.segments ?? 1} trecho(s); key igual em ${a.keyAgree ?? 0}/${a.segments ?? 1}`,
+    // acelerar gera pequenos artefatos: 1,5× pesa 10% menos; 2×, 20% menos
+    weight: rate >= 2 ? 0.8 : rate >= 1.5 ? 0.9 : 1,
+    note: `${Math.round(a.musicSec ?? a.durationSec ?? 0)} s de música${speed} em ${a.segments ?? 1} trecho(s); key igual em ${a.keyAgree ?? 0}/${a.segments ?? 1}`,
   }]);
   if (a.danceability != null) upd(id, { danceability: a.danceability });
   applyConsensus(id);

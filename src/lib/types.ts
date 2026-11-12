@@ -16,6 +16,7 @@ export interface SourceReading {
   genres?: string[];
   energy?: number;        // 1..10
   note?: string;          // detalhe exibido (ex.: "identificada por ISRC")
+  weight?: number;        // multiplicador do peso na votação (ex.: escuta acelerada pesa menos)
   error?: string;
 }
 

@@ -2,9 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Headphones, MonitorSpeaker, Mic, Square, Loader2, ExternalLink } from "lucide-react";
 import type { Track } from "@/lib/types";
-import { startListening, analyzeListened, supportsTabAudio, supportsMic, type ListenKind, type ListenSession } from "@/lib/listen";
+import { startListening, analyzeListened, supportsTabAudio, supportsMic, type ListenKind, type ListenSession, type ListenResult } from "@/lib/listen";
 import { addListenReading } from "@/lib/pipeline";
-import type { AnalysisResult } from "@/lib/audio";
 import { Button, Modal, cn } from "./ui";
 import { KeyBadge } from "./bits";
 import { camelotToMusical } from "@/lib/camelot";
@@ -21,7 +20,8 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
   const [sec, setSec] = useState(0);
   const [level, setLevel] = useState(0);
   const [err, setErr] = useState<string | null>(null);
-  const [res, setRes] = useState<AnalysisResult | null>(null);
+  const [res, setRes] = useState<ListenResult | null>(null);
+  const [rate, setRate] = useState(1);
   const session = useRef<ListenSession | null>(null);
 
   useEffect(() => () => session.current?.cancel(), []);
@@ -31,7 +31,7 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
     setErr(null);
     try {
       session.current = await startListening(kind, {
-        maxSec,
+        maxSec: Math.ceil(maxSec / rate), // tempo de música desejado ÷ velocidade
         onLevel: (r) => setLevel(r),
         onTick: (s) => setSec(s),
         onAutoStop: () => finish(),
@@ -55,7 +55,7 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
     const samples = s.stop();
     setPhase("analyzing");
     try {
-      const a = await analyzeListened(samples);
+      const a = await analyzeListened(samples, rate);
       setRes(a);
       addListenReading(t.id, a, kind);
       setPhase("done");
@@ -66,8 +66,10 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
   }
 
   const q = `${t.title} ${t.artist}`.trim();
-  const canStop = sec >= 20;
-  const pct = Math.min(100, (sec / maxSec) * 100);
+  const musicSec = Math.round(sec * rate);
+  const canStop = musicSec >= 20;
+  const pct = Math.min(100, (musicSec / maxSec) * 100);
+  const fmtRate = (r: number) => `${String(r).replace(".", ",")}×`;
 
   return (
     <Modal open={open} onClose={() => { session.current?.cancel(); onClose(); }} title={<span className="flex items-center gap-2"><Headphones size={18} /> Ouvir e analisar</span>}>
@@ -103,11 +105,22 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
               )}
               <li>Deixe tocar (de preferência a partir do início ou de uma parte com batida). O MixKey para sozinho no tempo escolhido.</li>
             </ol>
+            <div className="flex flex-wrap items-center gap-2 mb-1 text-xs">
+              <span className="text-muted">Velocidade em que a música está tocando</span>
+              {[1, 1.25, 1.5, 2].map((r) => (
+                <button key={r} onClick={() => setRate(r)} className={cn("rounded-lg border px-2.5 h-7", rate === r ? "border-accent text-accent bg-accent/10" : "border-line")}>{fmtRate(r)}</button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted mb-3">
+              Para ir mais rápido, acelere no player do YouTube (⚙ → Velocidade) — ele acelera <b>sem mudar o tom</b>, então a key continua certa e o BPM é corrigido aqui.
+              Para house/techno (120–135 BPM), use até 1,5×; 2× só para faixas até ~100 BPM. {kind === "mic" && rate > 1 && "No microfone, prefira 1× ou 1,25×."}
+            </p>
             <div className="flex items-center gap-2 mb-3 text-xs">
-              <span className="text-muted">Ouvir por</span>
+              <span className="text-muted">Analisar</span>
               {[60, 90, 120].map((n) => (
                 <button key={n} onClick={() => setMaxSec(n)} className={cn("rounded-lg border px-2.5 h-7", maxSec === n ? "border-accent text-accent bg-accent/10" : "border-line")}>{n} s</button>
               ))}
+              <span className="text-muted">de música{rate > 1 && ` (≈ ${Math.ceil(maxSec / rate)} s de escuta)`}</span>
             </div>
             {err && <div className="text-red-400 text-xs mb-3">{err}</div>}
             <Button variant="primary" onClick={begin} disabled={!tabOk && !micOk}><Headphones size={16} /> Começar</Button>
@@ -117,7 +130,7 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
 
         {phase === "listening" && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-accent"><span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" /> Ouvindo {kind === "tab" ? "a aba" : "o microfone"}… {sec}s / {maxSec}s</div>
+            <div className="flex items-center gap-2 text-accent"><span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" /> Ouvindo {kind === "tab" ? "a aba" : "o microfone"}… {rate > 1 ? `${sec}s de escuta ≈ ${musicSec}s de música a ${fmtRate(rate)}` : `${sec}s`} / {maxSec}s</div>
             <div className="h-2 rounded-full bg-line overflow-hidden"><div className="h-full grad-bg transition-all" style={{ width: `${pct}%` }} /></div>
             <div className="flex items-end gap-0.5 h-8" title="Nível do som">
               {Array.from({ length: 24 }, (_, i) => (
@@ -125,11 +138,11 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
               ))}
             </div>
             {level < 0.003 && sec > 3 && <div className="text-xs text-amber-400">Quase nenhum som chegando. A música está tocando{kind === "tab" ? " e o áudio da aba foi compartilhado" : ""}?</div>}
-            <Button onClick={finish} disabled={!canStop}><Square size={14} /> {canStop ? "Parar e analisar" : `Parar (a partir de 20 s)`}</Button>
+            <Button onClick={finish} disabled={!canStop}><Square size={14} /> {canStop ? "Parar e analisar" : `Parar (a partir de 20 s de música)`}</Button>
           </div>
         )}
 
-        {phase === "analyzing" && <div className="flex items-center gap-2 text-accent py-4"><Loader2 size={16} className="animate-spin" /> Analisando {Math.round(sec)} s de áudio…</div>}
+        {phase === "analyzing" && <div className="flex items-center gap-2 text-accent py-4"><Loader2 size={16} className="animate-spin" /> Analisando {musicSec} s de música…</div>}
 
         {phase === "done" && res && (
           <div className="space-y-3">
@@ -137,9 +150,10 @@ export default function ListenModal({ t, open, onClose }: { t: Track; open: bool
               <KeyBadge k={res.key} size="lg" />
               <div>
                 <div className="text-2xl font-bold tabular-nums">{res.bpm ?? "—"} <span className="text-sm text-muted font-normal">BPM</span></div>
-                <div className="text-xs text-muted">{camelotToMusical(res.key)} · {res.segments} trecho(s) analisado(s), key igual em {res.keyAgree}/{res.segments}</div>
+                <div className="text-xs text-muted">{camelotToMusical(res.key)} · {res.musicSec} s de música{res.rate !== 1 && ` a ${fmtRate(res.rate)}`} · {res.segments} trecho(s), key igual em {res.keyAgree}/{res.segments}</div>
               </div>
             </div>
+            {res.warning && <p className="text-xs text-amber-400">⚠ {res.warning}</p>}
             <p className="text-xs text-muted">Adicionado à faixa como “Escuta ao vivo”. Ele entra na votação e aparece no Comparativo junto com as outras fontes.</p>
             <div className="flex gap-2">
               <Button variant="primary" onClick={onClose}>Concluir</Button>
