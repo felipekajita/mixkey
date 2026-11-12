@@ -29,6 +29,11 @@ describe("keyRelation", () => {
     expect(keyRelation("8A", "10A").kind).toBe("boost");
     expect(keyRelation("8A", "9B").kind).toBe("diagonal");
     expect(keyRelation("8A", "3B").kind).toBe("clash");
+    // as 4 diagonais (6 de 7 notas em comum): Save the World (8B) → Revolution (9A)
+    expect(keyRelation("8B", "9A").kind).toBe("diagonal");
+    expect(keyRelation("8A", "7B").kind).toBe("diagonal");
+    expect(keyRelation("8B", "7A").kind).toBe("diagonal");
+    expect(keyRelation("8B", "10A").kind).toBe("clash");
   });
 });
 

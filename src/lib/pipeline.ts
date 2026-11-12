@@ -7,6 +7,7 @@ import { splitArtistTitle, type ParsedTrack } from "./parsers/text";
 import { estimateEnergy } from "./energy";
 import { normalizeName, cleanTitle, splitVersion } from "./match";
 import { getCached, putCached, type PreviewAnalysis } from "./lookupCache";
+import { rescoreSequence } from "./sequencer";
 import type { StorePayload } from "./store-import/parse";
 import type { StoreTrack } from "./store-import/extract";
 import { parseKey } from "./camelot";
@@ -96,10 +97,29 @@ export function resumePending() {
 const get = (id: string) => useStore.getState().tracks.find((t) => t.id === id);
 const upd = (id: string, p: Partial<Track>) => useStore.getState().updateTrack(id, p);
 
+/** BPM típico da biblioteca (mediana das outras faixas com BPM de confiança alta) */
+function libraryBpm(exceptId: string): number | undefined {
+  const bs = useStore.getState().tracks.filter((t) => t.id !== exceptId && t.bpm && t.bpmConfidence === "high").map((t) => t.bpm!).sort((a, b) => a - b);
+  return bs.length >= 5 ? bs[Math.floor(bs.length / 2)] : undefined;
+}
+
+/** Ao abrir o app: aplica as regras atuais a tudo que já estava salvo (faixas e sets) */
+export function refreshAll() {
+  recomputeAll();
+  const st = useStore.getState();
+  const map = new Map(st.tracks.map((t) => [t.id, t]));
+  if (st.sequences.length) useStore.setState({ sequences: st.sequences.map((q) => rescoreSequence(q, map, st.options.maxPitch)) });
+}
+
+/** Recalcula key/BPM de toda a biblioteca com as regras atuais (sem buscar nada de novo) */
+export function recomputeAll() {
+  for (const t of useStore.getState().tracks) if (t.status === "done" && t.readings.length) applyConsensus(t.id);
+}
+
 function applyConsensus(id: string) {
   const t = get(id);
   if (!t) return;
-  const c = computeConsensus(t.readings, t.genres);
+  const c = computeConsensus(t.readings, t.genres, libraryBpm(id));
   const patch: Partial<Track> = {
     keyConfidence: c.keyConfidence, bpmConfidence: c.bpmConfidence,
     coverUrl: t.coverUrl?.startsWith("data:") ? t.coverUrl : c.coverUrl ?? t.coverUrl,

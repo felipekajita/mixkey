@@ -57,3 +57,20 @@ describe("ajustes sugeridos no set", () => {
     expect(ids).not.toContain("b");
   });
 });
+
+describe("conflitos: soluções sugeridas", () => {
+  it("oferece mover, ponte e retirada para um conflito entre faixas que combinam com outras", () => {
+    // A(8B)–B(8B) bem; C(10A)–D(10A) bem; B→C é conflito (8B→10A)
+    const set = [mk("a", "8B", 158, 7), mk("b", "8B", 160, 7), mk("c", "10A", 155, 8), mk("d", "10A", 155, 8), mk("e", "9A", 156, 8)];
+    const lib = [...set, mk("ponte", "9A", 157, 7)];
+    const map = new Map(lib.map((t) => [t.id, t]));
+    const seq = rescoreSequence({ id: "s", name: "S", trackIds: set.map((t) => t.id), transitions: [], score: 0, targets: [], totalSec: 0, stats: { perfect: 0, ok: 0, risky: 0, clash: 0 } }, map, 0.06);
+    const conf = setAdjustments(seq, map, 0.06, lib).filter((x) => x.kind === "conflict");
+    expect(conf).toHaveLength(1);
+    const fix = conf[0].conflict!;
+    expect([fix.fromId, fix.toId]).toEqual(["b", "c"]);
+    expect(fix.move?.gain).toBeGreaterThan(0);          // mover "e" (9A) para entre b e c resolve
+    expect(fix.bridges).toContain("ponte");
+    expect(fix.removals).toHaveLength(2);
+  });
+});

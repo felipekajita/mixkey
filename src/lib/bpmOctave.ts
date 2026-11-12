@@ -40,7 +40,11 @@ const round = (x: number) => Math.round(x); // BPM inteiro
 
 export interface BpmResult { bpm: number; groupWeight: number; totalWeight: number; note?: string }
 
-export function resolveBpm(votes: BpmVote[], genres: string[] = []): BpmResult | null {
+/**
+ * `contextBpm`: BPM típico da biblioteca (mediana das faixas com BPM confiável). Quando as fontes
+ * divergem em meio/dobro tempo, ajuda a escolher a oitava (ex.: hardstyle a 161 lido como 81).
+ */
+export function resolveBpm(votes: BpmVote[], genres: string[] = [], contextBpm?: number): BpmResult | null {
   const vs = votes.filter((v) => v.b > 30 && v.b < 300);
   if (!vs.length) return null;
   const total = vs.reduce((a, v) => a + v.w, 0);
@@ -61,6 +65,7 @@ export function resolveBpm(votes: BpmVote[], genres: string[] = []): BpmResult |
   const catalogW = g.members.filter((x) => x.v.octaveW == null || x.v.octaveW >= x.v.w).reduce((acc, x) => acc + x.v.w, 0);
   const hasCatalog = catalogW >= 3;
   const genreBonus = hasCatalog ? 0.75 : 3;
+  const mixedOct = new Set(g.members.map((x) => x.m)).size > 1;
   const cands = OCT.map((m) => avg * m).filter((b) => b >= 60 && b <= 200);
   let pick = avg, pickScore = -Infinity;
   for (const b of cands) {
@@ -70,12 +75,17 @@ export function resolveBpm(votes: BpmVote[], genres: string[] = []): BpmResult |
       if (b >= range[0] && b <= range[1]) score += genreBonus;
       else score -= (Math.min(Math.abs(b - range[0]), Math.abs(b - range[1])) / 20) * (hasCatalog ? 0.25 : 1);
     } else if (b < 70 || b > 185) score -= 1; // sem gênero: evita extremos
+    // contexto da biblioteca: só desempata quando as fontes discordam de oitava
+    if (contextBpm && mixedOct) {
+      const dist = Math.abs(Math.log2(b / contextBpm));
+      if (dist < 0.35) score += 1.5 * (1 - dist / 0.35);
+    }
     if (score > pickScore) { pick = b; pickScore = score; }
   }
   const final = round(pick);
   const sourceVals = new Set(g.members.map((x) => Math.round(x.v.b)));
   const corrected = ![...sourceVals].some((v) => near(v, final, 0.03));
-  const mixed = new Set(g.members.map((x) => x.m)).size > 1;
+  const mixed = mixedOct;
   const note = corrected
     ? `BPM ajustado para ${final} (lido como ${[...sourceVals].join("/")}${range ? `; faixa típica do gênero ${range[0]}–${range[1]}` : ""})`
     : mixed ? "Fontes divergiram em meio/dobro tempo; escolhido o valor mais votado" : undefined;

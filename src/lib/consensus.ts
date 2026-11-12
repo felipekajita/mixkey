@@ -12,7 +12,7 @@ const weight = (source: string) => KEY_W[source] ?? (source.startsWith("store-")
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
-export function computeConsensus(readings: SourceReading[], extraGenres: string[] = []): Partial<Track> {
+export function computeConsensus(readings: SourceReading[], extraGenres: string[] = [], contextBpm?: number): Partial<Track> {
   const ok = readings.filter(usable);
   const out: Partial<Track> = {};
   // as prévias usam o mesmo detector: juntas valem no máximo 3 (uma opinião forte, não três)
@@ -46,7 +46,7 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
     // as análises dividem um único "voto" de oitava (mesmo detector), com peso reduzido
     octaveW: isAnalysis(r.source) ? (weight(r.source) * 0.6) / nAnalyses : weight(r.source),
   }));
-  const br = resolveBpm(bs, [...genres]);
+  const br = resolveBpm(bs, [...genres], contextBpm);
   if (br) {
     out.bpm = br.bpm;
     out.bpmNote = br.note;

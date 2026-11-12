@@ -280,12 +280,34 @@ export function findBridges(a: Track, b: Track, library: Track[], maxPitch: numb
     .map((x) => x.t);
 }
 
+export interface ConflictFix {
+  fromId: string; toId: string; score: number; label: string;
+  move?: { trackId: string; ids: string[]; label: string; gain: number; fixed: number };
+  bridges: string[];                                  // faixas da biblioteca (fora do set) que fazem ponte
+  removals: { trackId: string; gain: number }[];      // quanto a nota média do set sobe ao retirar
+}
+
 export interface SetAdjustment {
   trackId: string;
-  kind: "remove" | "reorder";
+  kind: "remove" | "reorder" | "conflict";
   reason: string;
   bestFit: number; // melhor nota de transição com qualquer outra faixa do set
+  conflict?: ConflictFix;
 }
+
+/** Nota média das transições de uma ordem (0–100) e quantos conflitos (< 40) e riscos (< 55) ela tem */
+export function orderStats(ids: string[], tracks: Map<string, Track>, maxPitch: number) {
+  const ts = ids.map((id) => tracks.get(id)!).filter(Boolean);
+  if (ts.length < 2) return { avg: 100, conflicts: 0, risky: 0 };
+  let sum = 0, conflicts = 0, risky = 0;
+  for (let i = 1; i < ts.length; i++) {
+    const sc = transitionInfo(ts[i - 1], ts[i], maxPitch).score;
+    sum += sc;
+    if (sc < 40) conflicts++; else if (sc < 55) risky++;
+  }
+  return { avg: sum / (ts.length - 1), conflicts, risky };
+}
+const orderScore = (ids: string[], tracks: Map<string, Track>, maxPitch: number) => orderStats(ids, tracks, maxPitch).avg;
 
 /**
  * Faixas que não combinam com o set:
@@ -293,7 +315,7 @@ export interface SetAdjustment {
  *   ou BPM muito fora do set (além da tolerância de pitch, considerando meio/dobro tempo);
  * - "reorder": tem par bom no set, mas está mal posicionada (entrada e saída ruins).
  */
-export function setAdjustments(seq: SequenceResult, tracks: Map<string, Track>, maxPitch: number): SetAdjustment[] {
+export function setAdjustments(seq: SequenceResult, tracks: Map<string, Track>, maxPitch: number, library: Track[] = []): SetAdjustment[] {
   const ts = seq.trackIds.map((id) => tracks.get(id)).filter((t): t is Track => !!t);
   if (ts.length < 4) return [];
   const bpms = ts.map((t) => t.bpm).filter((b): b is number => !!b).sort((a, b) => a - b);
@@ -317,6 +339,45 @@ export function setAdjustments(seq: SequenceResult, tracks: Map<string, Track>, 
       const outS = i < ts.length - 1 ? seq.transitions[i]?.score ?? 100 : 100;
       if (inS < 40 && outS < 40) out.push({ trackId: t.id, kind: "reorder", bestFit, reason: `Combina com “${bestWith}” (${bestFit}/100), mas está mal posicionada: entrada ${inS} e saída ${outS}` });
     }
+  });
+
+  // cada conflito/transição arriscada (< 55) entre faixas que ficam no set: como resolver
+  const removed = new Set(out.filter((a) => a.kind === "remove").map((a) => a.trackId));
+  const baseStats = orderStats(seq.trackIds, tracks, maxPitch);
+  const base = baseStats.avg;
+  const inSet = new Set(seq.trackIds);
+  seq.transitions.forEach((tr, i) => {
+    if (tr.score >= 55) return;
+    const a = ts[i], b = ts[i + 1];
+    if (!a || !b || removed.has(a.id) || removed.has(b.id)) return; // retirar a faixa já resolve
+    // melhor movimento: uma das duas faixas para outra posição, ou outra faixa do set para o meio delas
+    let move: ConflictFix["move"];
+    const candidates: { t: Track; positions: number[] }[] = [a, b].map((t) => ({ t, positions: [] as number[] }));
+    for (const x of ts) if (x.id !== a.id && x.id !== b.id && !removed.has(x.id)) candidates.push({ t: x, positions: [-1] });
+    for (const { t, positions } of candidates) {
+      const rest = seq.trackIds.filter((x) => x !== t.id);
+      const js = positions.length ? [rest.indexOf(a.id) + 1] : Array.from({ length: rest.length + 1 }, (_, j) => j);
+      for (const j of js) {
+        const ids = [...rest.slice(0, j), t.id, ...rest.slice(j)];
+        if (ids.join() === seq.trackIds.join()) continue;
+        const st = orderStats(ids, tracks, maxPitch);
+        const fixed = (baseStats.conflicts + baseStats.risky) - (st.conflicts + st.risky);
+        const gain = st.avg - base;
+        // só vale se diminuir conflitos/riscos sem criar outros
+        if (st.conflicts <= baseStats.conflicts && fixed > 0 && gain > 0 && (!move || fixed > move.fixed || (fixed === move.fixed && gain > move.gain))) {
+          const prev = tracks.get(rest[j - 1]), next = tracks.get(rest[j]);
+          const where = !prev ? "para o início" : !next ? "para o fim" : `entre “${prev.title}” e “${next.title}”`;
+          move = { trackId: t.id, ids, gain, fixed, label: `Mover “${t.title}” ${where}` };
+        }
+      }
+    }
+    const removals = [a, b].map((t) => ({ trackId: t.id, gain: orderScore(seq.trackIds.filter((x) => x !== t.id), tracks, maxPitch) - base }));
+    const bridges = findBridges(a, b, library, maxPitch, inSet).map((x) => x.id);
+    out.push({
+      trackId: a.id, kind: "conflict", bestFit: tr.score,
+      reason: `“${a.title}” (${a.key ?? "?"}, ${a.bpm ?? "?"} BPM) → “${b.title}” (${b.key ?? "?"}, ${b.bpm ?? "?"} BPM): ${tr.key.label.toLowerCase()} · BPM ${tr.bpm.label} · nota ${tr.score}`,
+      conflict: { fromId: a.id, toId: b.id, score: tr.score, label: tr.key.label, move, bridges, removals },
+    });
   });
   return out;
 }

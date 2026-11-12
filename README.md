@@ -57,7 +57,12 @@ O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as
 
 ## Ajustes sugeridos e roda Camelot
 
-Na tela de sequências, o painel **Ajustes sugeridos** aponta faixas que não combinam com nenhuma outra do set (key ou BPM) e oferece **Retirar do set**, que pode ser desfeito; a faixa continua na biblioteca. Também aponta faixas mal posicionadas e sugere **Reotimizar**. A **roda Camelot** mostra o caminho com números, setas, **Início** e **Fim**, e logo abaixo vem a sequência resumida das keys (ex.: `1 8A → 2 9A ↕ 3 9B …`), com conflitos em vermelho.
+Na tela de sequências, o painel **Ajustes sugeridos** trata cada **conflito** entre duas faixas com soluções concretas:
+- mover uma faixa do set para resolver, informando quantos problemas resolve;
+- inserir uma faixa ponte da biblioteca;
+- retirar uma das duas.
+
+O botão **Reotimizar priorizando harmonia** refaz a ordem mantendo a primeira faixa e mostra antes quantos problemas restam. O painel também aponta faixas que não combinam com nenhuma outra do set (key ou BPM) e oferece **Retirar do set**, que pode ser desfeito; a faixa continua na biblioteca. Também aponta faixas mal posicionadas e sugere **Reotimizar**. A **roda Camelot** mostra o caminho com números, setas, **Início** e **Fim**, e logo abaixo vem a sequência resumida das keys (ex.: `1 8A → 2 9A ↕ 3 9B …`), com conflitos em vermelho.
 
 ## Prévias
 
@@ -138,6 +143,8 @@ Faixas que vieram de lista ou link (sem arquivo) recebem o nome presumido `Títu
 O BPM é sempre arredondado para o inteiro mais próximo.
 
 ### Meio ou dobro tempo
+
+Quando as fontes discordam entre meio e dobro tempo (ex.: um catálogo diz 81 e as análises dizem 161), o BPM típico da sua biblioteca ajuda a desempatar.
 
 Detectores às vezes leem metade ou o dobro do BPM real (ex.: 85 em vez de 171). O MixKey trata leituras ×2/÷2 de fontes diferentes como a mesma e escolhe o valor pelos votos das fontes e pela faixa típica do gênero (house 110–132, techno 122–150, drum and bass 160–180, dubstep 135–155, hip hop 75–115…). Quando o BPM é corrigido, os detalhes da faixa mostram um aviso explicando o ajuste.
 

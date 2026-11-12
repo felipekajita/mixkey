@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Download, Copy, MonitorPlay, Save, FileSpreadsheet, Lightbulb, Trash2, Wand2, ChevronLeft, ChevronRight, X, ListMusic, LayoutGrid } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Track } from "@/lib/types";
-import { rescoreSequence, findBridges, buildSequences, setAdjustments, type SequenceResult, type Transition } from "@/lib/sequencer";
+import { rescoreSequence, findBridges, buildSequences, setAdjustments, orderStats, type SequenceResult, type Transition } from "@/lib/sequencer";
 import { formatDuration } from "@/lib/bpm";
 import { camelotToMusical } from "@/lib/camelot";
 import { toM3U8, toText, toCSV, toRekordboxXml, download } from "@/lib/export";
@@ -24,6 +24,15 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
   const byId = useMemo(() => new Map(tracks.map((t) => [t.id, t])), [tracks]);
   const seq = sequences[activeSeq];
 
+  // reotimização do set inteiro priorizando harmonia (mantém a 1ª faixa); só oferece se reduzir conflitos
+  const harmonicFix = useMemo(() => {
+    if (!seq || seq.trackIds.length < 4) return null;
+    const ts = seq.trackIds.map((id) => byId.get(id)).filter((t): t is Track => !!t);
+    const r = buildSequences(ts, { ...options, count: 1, harmonicWeight: Math.max(2.5, options.harmonicWeight), startTrackId: ts[0].id, endTrackId: undefined, length: { mode: "all", value: 0 }, distinct: false })[0];
+    if (!r) return null;
+    const before = orderStats(seq.trackIds, byId, options.maxPitch), after = orderStats(r.trackIds, byId, options.maxPitch);
+    return after.conflicts + after.risky < before.conflicts + before.risky ? { ids: r.trackIds, before, after } : null;
+  }, [seq, byId, options]);
   if (!seq) {
     return (
       <Card className="p-10 text-center">
@@ -55,7 +64,12 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
   }
 
   const inSet = new Set(seq.trackIds);
-  const adjustments = setAdjustments(seq, byId, options.maxPitch);
+  const adjustments = setAdjustments(seq, byId, options.maxPitch, tracks);
+  function applyOrder(ids: string[], msg: string) {
+    setUndo({ seqId: seq.id, ids: seq.trackIds });
+    reorder(ids);
+    notify(msg);
+  }
   function removeFromSet(ids: string[]) {
     const prev = seq.trackIds;
     setUndo({ seqId: seq.id, ids: prev });
@@ -103,6 +117,11 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
               <h3 className="font-semibold">Ajustes sugeridos</h3>
               <div className="flex gap-2">
                 {undo && undo.seqId === seq.id && <Button size="sm" variant="ghost" onClick={() => { reorder(undo.ids); setUndo(null); notify("Remoção desfeita"); }}>↶ Desfazer remoção</Button>}
+                {harmonicFix && (
+                  <Button size="sm" variant="primary" onClick={() => applyOrder(harmonicFix.ids, "Set reotimizado priorizando harmonia")} title="Refaz a ordem mantendo a primeira faixa">
+                    <Wand2 size={13} /> Reotimizar priorizando harmonia ({harmonicFix.before.conflicts + harmonicFix.before.risky} → {harmonicFix.after.conflicts + harmonicFix.after.risky} problemas)
+                  </Button>
+                )}
                 {adjustments.filter((a) => a.kind === "remove").length > 1 && (
                   <Button size="sm" variant="danger" onClick={() => removeFromSet(adjustments.filter((a) => a.kind === "remove").map((a) => a.trackId))}>Retirar todas as sugeridas ({adjustments.filter((a) => a.kind === "remove").length})</Button>
                 )}
@@ -113,6 +132,25 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
               {adjustments.map((a) => {
                 const t = byId.get(a.trackId);
                 if (!t) return null;
+                if (a.kind === "conflict" && a.conflict) {
+                  const f = a.conflict;
+                  const from = byId.get(f.fromId), to = byId.get(f.toId);
+                  const fromIdx = seq.trackIds.indexOf(f.fromId);
+                  return (
+                    <div key={`c-${f.fromId}-${f.toId}`} className="py-2.5">
+                      <div className="flex items-center gap-2">
+                        <Cover src={from?.coverUrl} size={32} /><span className="text-muted">→</span><Cover src={to?.coverUrl} size={32} />
+                        <div className="min-w-0 flex-1 text-xs text-red-400">⚠ Conflito: {a.reason}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2 pl-0 sm:pl-[5.5rem]">
+                        {f.move && <Button size="sm" variant="primary" onClick={() => applyOrder(f.move!.ids, "Faixa movida")}><Wand2 size={13} /> {f.move.label} <span className="opacity-80">(resolve {f.move.fixed})</span></Button>}
+                        {f.bridges.slice(0, 2).map((bid) => { const b = byId.get(bid); return b ? <Button key={bid} size="sm" onClick={() => { setUndo({ seqId: seq.id, ids: seq.trackIds }); insertBridge(fromIdx, b); }}>+ Ponte: {b.title} ({b.key} · {b.bpm})</Button> : null; })}
+                        {f.removals.map((r) => { const rt = byId.get(r.trackId); return rt ? <Button key={r.trackId} size="sm" variant="ghost" onClick={() => removeFromSet([r.trackId])}><X size={13} /> Retirar “{rt.title}” {r.gain > 0.05 ? <span className="text-emerald-400">(+{r.gain.toFixed(1)})</span> : null}</Button> : null; })}
+                        {!f.move && !f.bridges.length && <span className="text-[11px] text-muted self-center">Nenhuma faixa sozinha resolve movendo de lugar e não há faixa ponte na biblioteca.{harmonicFix ? " Tente “Reotimizar priorizando harmonia”." : " Se mantiver, faça uma transição curta (corte/eco)."}</span>}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={a.trackId} className="flex items-center gap-3 py-2">
                     <Cover src={t.coverUrl} size={40} />

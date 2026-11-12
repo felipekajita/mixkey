@@ -131,6 +131,9 @@ export function keyRelation(a?: Camelot, b?: Camelot): KeyRelation {
   if (A.letter === B.letter && d === 2) return { kind: "boost", cost: 2.5, label: "+2 Energy boost", icon: "⚡" };
   if (A.letter === "A" && B.letter === "B" && d === 1) return { kind: "diagonal", cost: 2, label: "Diagonal (menor→maior)", icon: "↗" };
   if (A.letter === "B" && B.letter === "A" && d === 11) return { kind: "diagonal", cost: 2, label: "Diagonal (maior→menor)", icon: "↘" };
+  // as outras duas diagonais (ex.: 8B→9A, 8A→7B) também compartilham 6 de 7 notas; um pouco menos usuais
+  if (A.letter === "B" && B.letter === "A" && d === 1) return { kind: "diagonal", cost: 2.5, label: "Diagonal (maior→menor, +1)", icon: "↗" };
+  if (A.letter === "A" && B.letter === "B" && d === 11) return { kind: "diagonal", cost: 2.5, label: "Diagonal (menor→maior, −1)", icon: "↘" };
   if (A.letter === B.letter && d === 7) return { kind: "semitone", cost: 3.5, label: "+1 semitom (modulação)", icon: "⤴" };
   if (A.letter === B.letter && d === 10) return { kind: "drop", cost: 4, label: "−2 (queda de energia)", icon: "⤵" };
   return { kind: "clash", cost: 10, label: "Conflito harmônico", icon: "⚠" };

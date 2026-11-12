@@ -125,3 +125,39 @@ describe("escuta acelerada", () => {
     expect(c.key).toBe("9A");
   });
 });
+
+describe("meio tempo com contexto da biblioteca (backup do usuário)", () => {
+  it("LIVE FOREVER: SongBPM 81 vs 3 prévias 161/162 num set de hardstyle → 161", () => {
+    const r = [
+      { source: "songbpm", label: "S", key: "4A", bpm: 81 },
+      { source: "essentia-preview-deezer", label: "D", key: "4A", bpm: 161 },
+      { source: "essentia-preview-apple", label: "A", key: "4A", bpm: 161 },
+      { source: "essentia-preview-spotify", label: "Sp", key: "4A", bpm: 162 },
+    ];
+    expect(computeConsensus(r, ["dance"]).bpm).toBe(81); // sem contexto, mantém o catálogo
+    const b = computeConsensus(r, ["dance"], 158).bpm!; // biblioteca ~158 BPM
+    expect(b).toBeGreaterThanOrEqual(160);
+    expect(b).toBeLessThanOrEqual(163);
+  });
+  it("contexto não atrapalha quando o catálogo forte concorda (Blinding Lights numa biblioteca de house)", () => {
+    const c = computeConsensus([
+      { source: "deezer", label: "Deezer", bpm: 171 },
+      { source: "reccobeats", label: "R", bpm: 171 },
+      { source: "essentia-preview-deezer", label: "D", bpm: 85 },
+      { source: "essentia-preview-apple", label: "A", bpm: 86 },
+    ], [], 124);
+    expect(c.bpm).toBe(171);
+  });
+});
+
+describe("Land Of Lunacy (empate 2×2 entre 80 e 162)", () => {
+  it("num set de hardstyle (~158 BPM) fica em ~161", () => {
+    const b = computeConsensus([
+      { source: "songbpm", label: "S", bpm: 80 },
+      { source: "essentia-preview-deezer", label: "D", bpm: 162 },
+      { source: "essentia-preview-apple", label: "A", bpm: 162 },
+      { source: "essentia-preview-spotify", label: "Sp", bpm: 80 },
+    ], ["dance"], 158).bpm!;
+    expect(b).toBeGreaterThanOrEqual(158);
+  });
+});

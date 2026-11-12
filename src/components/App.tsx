@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Sun, Library, Wand2, ListOrdered, Database, ChevronRight, HardDriveDownload } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { resumePending } from "@/lib/pipeline";
+import { resumePending, refreshAll } from "@/lib/pipeline";
 import AddTracks from "./AddTracks";
 import TrackTable from "./TrackTable";
 import Suggestions from "./Suggestions";
@@ -35,7 +35,7 @@ export default function App() {
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains("dark"));
-    const done = () => { setHydrated(true); resumePending(); };
+    const done = () => { setHydrated(true); refreshAll(); resumePending(); };
     if (useStore.persist.hasHydrated()) done();
     else return useStore.persist.onFinishHydration(done);
   }, []);
