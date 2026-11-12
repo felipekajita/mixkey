@@ -1,6 +1,6 @@
-import type { StoreTrack } from "./extract";
+import type { StoreTrack, StorePageType } from "./extract";
 
-export interface StorePayload { mixkey: "store"; v: number; store: string; page?: string; url?: string; tracks: StoreTrack[] }
+export interface StorePayload { mixkey: "store"; v: number; store: string; page?: string; url?: string; pageType?: StorePageType; pageId?: string; tracks: StoreTrack[] }
 
 export function isStorePayload(x: unknown): x is StorePayload {
   return !!x && typeof x === "object" && (x as any).mixkey === "store" && Array.isArray((x as any).tracks);

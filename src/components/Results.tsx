@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Download, Copy, MonitorPlay, Save, FileSpreadsheet, Lightbulb, Trash2, Wand2, ChevronLeft, ChevronRight, X, ListMusic, LayoutGrid } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Track } from "@/lib/types";
-import { rescoreSequence, findBridges, buildSequences, type SequenceResult, type Transition } from "@/lib/sequencer";
+import { rescoreSequence, findBridges, buildSequences, setAdjustments, type SequenceResult, type Transition } from "@/lib/sequencer";
 import { formatDuration } from "@/lib/bpm";
 import { camelotToMusical } from "@/lib/camelot";
 import { toM3U8, toText, toCSV, toRekordboxXml, download } from "@/lib/export";
@@ -20,6 +20,7 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
   const [view, setView] = useState<"timeline" | "grid">("timeline");
   const [booth, setBooth] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [undo, setUndo] = useState<{ seqId: string; ids: string[] } | null>(null);
   const byId = useMemo(() => new Map(tracks.map((t) => [t.id, t])), [tracks]);
   const seq = sequences[activeSeq];
 
@@ -54,6 +55,13 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
   }
 
   const inSet = new Set(seq.trackIds);
+  const adjustments = setAdjustments(seq, byId, options.maxPitch);
+  function removeFromSet(ids: string[]) {
+    const prev = seq.trackIds;
+    setUndo({ seqId: seq.id, ids: prev });
+    reorder(prev.filter((x) => !ids.includes(x)));
+    notify(ids.length > 1 ? `${ids.length} faixas retiradas do set (continuam na biblioteca)` : "Faixa retirada do set (continua na biblioteca)");
+  }
 
   return (
     <div className="space-y-4">
@@ -88,6 +96,39 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
+        <div className="space-y-4 min-w-0">
+        {(adjustments.length > 0 || (undo && undo.seqId === seq.id)) && (
+          <Card className="p-3 sm:p-4 border-amber-500/40">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h3 className="font-semibold">Ajustes sugeridos</h3>
+              <div className="flex gap-2">
+                {undo && undo.seqId === seq.id && <Button size="sm" variant="ghost" onClick={() => { reorder(undo.ids); setUndo(null); notify("Remoção desfeita"); }}>↶ Desfazer remoção</Button>}
+                {adjustments.filter((a) => a.kind === "remove").length > 1 && (
+                  <Button size="sm" variant="danger" onClick={() => removeFromSet(adjustments.filter((a) => a.kind === "remove").map((a) => a.trackId))}>Retirar todas as sugeridas ({adjustments.filter((a) => a.kind === "remove").length})</Button>
+                )}
+              </div>
+            </div>
+            {adjustments.length === 0 && <p className="text-sm text-muted">Nenhum ajuste pendente.</p>}
+            <div className="divide-y divide-line/70">
+              {adjustments.map((a) => {
+                const t = byId.get(a.trackId);
+                if (!t) return null;
+                return (
+                  <div key={a.trackId} className="flex items-center gap-3 py-2">
+                    <Cover src={t.coverUrl} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{t.title} <span className="text-muted font-normal">– {t.artist}</span></div>
+                      <div className={cn("text-xs", a.kind === "remove" ? "text-amber-400" : "text-muted")}>{a.kind === "remove" ? "⚠ " : "↻ "}{a.reason}</div>
+                    </div>
+                    {a.kind === "remove"
+                      ? <Button size="sm" onClick={() => removeFromSet([a.trackId])}><X size={14} /> Retirar do set</Button>
+                      : <Button size="sm" onClick={() => reoptimizeFrom(0)}><Wand2 size={14} /> Reotimizar</Button>}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
         <Card className="p-3 sm:p-4">
           <div className="flex items-center justify-between mb-3 px-1">
             <h3 className="font-semibold">Ordem de reprodução</h3>
@@ -110,6 +151,8 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
           )}
         </Card>
 
+        </div>
+
         <div className="space-y-4">
           <Card className="p-4">
             <h3 className="font-semibold mb-2">Curva de energia</h3>
@@ -117,7 +160,7 @@ export default function Results({ notify }: { notify: (m: string) => void }) {
           </Card>
           <Card className="p-4">
             <h3 className="font-semibold mb-2">Caminho na roda Camelot</h3>
-            <CamelotWheel path={list.map((t) => t.key)} />
+            <CamelotWheel path={list.map((t) => t.key)} steps={list.map((t) => ({ key: t.key, title: `${t.title} – ${t.artist}` }))} transitions={seq.transitions} />
           </Card>
           <Card className="p-4 text-sm space-y-1.5">
             <h3 className="font-semibold mb-1">Legenda das transições</h3>

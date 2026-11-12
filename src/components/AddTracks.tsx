@@ -15,6 +15,7 @@ import { extractUrls, resolveLinks, resultsToParsed } from "@/lib/links/client";
 import type { ResolveResult } from "@/lib/links/types";
 import { Cover, KeyBadge } from "./bits";
 import { formatDuration } from "@/lib/bpm";
+import { parseKey, camelotToMusical } from "@/lib/camelot";
 
 type Mode = "audio" | "list" | "paste" | "links";
 const LIST_EXT = /\.(txt|csv|tsv|xlsx|xlsm|xls|ods|m3u8?|xml|json|sqlite|sqlite3|db)$/i;
@@ -113,9 +114,10 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
     p.length ? setPreview({ tracks: p }) : notify("Não reconheci faixas no texto.");
   }
 
-  function confirmPreview() {
+  function confirmPreview(selected?: StorePayload["tracks"]) {
     if (preview?.store) {
-      const r = importStoreTracks(preview.store);
+      if (!selected?.length) return notify("Marque pelo menos uma faixa.");
+      const r = importStoreTracks({ ...preview.store, tracks: selected });
       notify(`${preview.store.store}: ${r.merged} faixa(s) atualizada(s) na biblioteca${r.added ? `, ${r.added} nova(s)` : ""}`);
       setPreview(null);
       return;
@@ -201,17 +203,17 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
         <div onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           <textarea value={linkText} onChange={(e) => setLinkText(e.target.value)} placeholder={`Cole links de faixas, álbuns ou playlists (um por linha):\n\n${LINK_EXAMPLE}`}
             className="w-full h-40 rounded-2xl bg-panel2 border border-line p-4 text-sm font-mono outline-none focus:border-accent scroll-thin" />
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {PLATFORM_CHIPS.map((p) => <span key={p} className="text-[11px] rounded-full border border-line px-2 py-0.5 text-muted">{p}</span>)}
-          </div>
-          <p className="text-xs text-muted mt-1.5">Faixas, álbuns e playlists de Spotify, Deezer, Apple Music, YouTube e YouTube Music; faixas do SoundCloud. * Leitura parcial (o site limita): confira o artista. Amazon Music não expõe os dados — cole o nome.</p>
-          <StoreButton />
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            <Button variant="primary" disabled={!linkText.trim() || !!resolving} onClick={() => readLinks(linkText)}>
-              {resolving ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} Ler links
+            <Button variant="primary" size="lg" className="min-w-[12rem]" disabled={!linkText.trim() || !!resolving} onClick={() => readLinks(linkText)}>
+              {resolving ? <Loader2 size={18} className="animate-spin" /> : <Link2 size={18} />} Ler links
             </Button>
             {resolving && <span className="text-sm text-muted">Lendo {resolving.done}/{resolving.total}…</span>}
           </div>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {PLATFORM_CHIPS.map((p) => <span key={p} className="text-[11px] rounded-full border border-line px-2 py-0.5 text-muted">{p}</span>)}
+          </div>
+          <p className="text-xs text-muted mt-1.5">Faixas, álbuns e playlists de Spotify, Deezer, Apple Music, YouTube e YouTube Music; faixas do SoundCloud. * Leitura parcial (o site limita): confira o artista. Amazon Music não expõe os dados — cole o nome.</p>
+          <StoreButton open={!!preview?.store} />
         </div>
       )}
 
@@ -219,14 +221,14 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
       <input ref={dirRef} type="file" multiple className="hidden" {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
       <input ref={listRef} type="file" multiple accept=".txt,.csv,.tsv,.xlsx,.xlsm,.xls,.ods,.m3u,.m3u8,.xml,.json,.sqlite,.sqlite3,.db" className="hidden" onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
 
-      {preview?.store && <StorePreview p={preview.store} onCancel={() => setPreview(null)} onConfirm={confirmPreview} />}
+      {preview?.store && <StorePreview p={preview.store} onCancel={() => setPreview(null)} onConfirm={(sel) => confirmPreview(sel)} />}
       {preview && !preview.store && (
         <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="font-medium">{tracks.length} faixa(s) reconhecida(s) — confira antes de adicionar</div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={() => setPreview(null)}>Cancelar</Button>
-              <Button variant="primary" size="sm" disabled={!tracks.length} onClick={confirmPreview}>Adicionar e buscar dados</Button>
+              <Button variant="primary" size="sm" disabled={!tracks.length} onClick={() => confirmPreview()}>Adicionar e buscar dados</Button>
             </div>
           </div>
 
@@ -331,15 +333,20 @@ function ColumnMapper({ table, onField, onHeader }: { table: TableInfo; onField:
 }
 
 /** Botão para arrastar para a barra de favoritos */
-function StoreButton() {
+function StoreButton({ open }: { open?: boolean }) {
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     // o React bloqueia "javascript:" em href; define direto no elemento
     ref.current?.setAttribute("href", makeBookmarklet(window.location.origin));
   }, []);
   return (
-    <div className="mt-4 rounded-xl border border-line bg-panel p-3">
-      <div className="text-sm font-medium">Dados oficiais do Beatport (1 clique)</div>
+    <details className="mt-4 rounded-xl border border-line bg-panel p-3 group/bp" open={open || undefined}>
+      <summary className="text-sm font-medium cursor-pointer select-none list-none flex items-center gap-2">
+        <span className="text-xs rounded bg-panel2 border border-line px-1.5 text-muted">extra</span>
+        Dados oficiais do Beatport (1 clique)
+        <span className="ml-auto text-muted text-xs group-open/bp:hidden">mostrar ▸</span>
+        <span className="ml-auto text-muted text-xs hidden group-open/bp:inline">ocultar ▾</span>
+      </summary>
       <p className="text-xs text-muted mt-1">
         O Beatport bloqueia leitura automática, mas você pode trazer os dados da página que estiver vendo: BPM, key, gênero, selo, ISRC e capa.
         Faixas que já estão na biblioteca ganham esses dados como mais uma fonte na votação; as demais são adicionadas.
@@ -355,41 +362,60 @@ function StoreButton() {
         → MixKey
       </a>
       <span className="text-[11px] text-muted ml-2">arraste, não clique</span>
-    </div>
+    </details>
   );
 }
 
-function StorePreview({ p, onCancel, onConfirm }: { p: StorePayload; onCancel: () => void; onConfirm: () => void }) {
+function StorePreview({ p, onCancel, onConfirm }: { p: StorePayload; onCancel: () => void; onConfirm: (sel: StorePayload["tracks"]) => void }) {
   const lib = useStore((s) => s.tracks);
   const inLib = (t: StorePayload["tracks"][number]) => lib.some((x) => (t.isrc && x.isrc === t.isrc) || matchScore(x, { title: storeTitle(t), artist: t.artists }) >= 0.85);
-  const n = p.tracks.filter(inLib).length;
+  // padrão: faixa/release/chart marcados; na busca, só o que já está na biblioteca
+  const [sel, setSel] = useState<Set<number>>(() => new Set(p.tracks.map((t, i) => (p.pageType === "search" && !inLib(t) ? -1 : i)).filter((i) => i >= 0)));
+  const toggle = (i: number) => setSel((cur) => { const n = new Set(cur); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  const chosen = p.tracks.filter((_, i) => sel.has(i));
+  const n = chosen.filter(inLib).length;
+  const typeLabel = { track: "página da faixa", release: "release", search: "busca", list: "lista" }[p.pageType ?? "list"];
   return (
     <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-        <div className="font-medium">{p.store}: {p.tracks.length} faixa(s) — {p.page?.replace(/\s*\|.*$/, "")}</div>
+        <div className="font-medium">{p.store} · {typeLabel}: {p.tracks.length} faixa(s) — {p.page?.replace(/\s*\|.*$/, "")}</div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
-          <Button variant="primary" size="sm" onClick={onConfirm}>Importar dados</Button>
+          <Button variant="primary" size="sm" disabled={!chosen.length} onClick={() => onConfirm(chosen)}>Importar {chosen.length} faixa(s)</Button>
         </div>
       </div>
-      <p className="text-xs text-muted mb-3">{n} já está(ão) na biblioteca e vão ganhar os dados do {p.store} como fonte oficial; {p.tracks.length - n} serão adicionadas.</p>
+      <p className="text-xs text-muted mb-2">
+        {p.pageType === "search" && <>Página de busca: marque só as faixas certas. </>}
+        Das marcadas, {n} já está(ão) na biblioteca e vão ganhar os dados do {p.store} como fonte oficial; {chosen.length - n} serão adicionadas.
+      </p>
+      {p.tracks.length > 1 && (
+        <div className="flex gap-3 text-xs mb-2">
+          <button className="underline text-muted hover:text-fg" onClick={() => setSel(new Set(p.tracks.map((_, i) => i)))}>Marcar todas</button>
+          <button className="underline text-muted hover:text-fg" onClick={() => setSel(new Set())}>Desmarcar todas</button>
+          <button className="underline text-muted hover:text-fg" onClick={() => setSel(new Set(p.tracks.map((t, i) => (inLib(t) ? i : -1)).filter((i) => i >= 0)))}>Só as da biblioteca</button>
+        </div>
+      )}
       <div className="max-h-72 overflow-auto scroll-thin text-sm">
         <table className="w-full">
           <thead className="text-xs text-muted text-left sticky top-0 bg-panel">
-            <tr><th className="py-1 pr-2 w-10" /><th className="pr-2">Título</th><th className="pr-2">Artista</th><th className="pr-2">Key</th><th className="pr-2">BPM</th><th className="pr-2">Gênero</th><th>Selo</th></tr>
+            <tr><th className="py-1 pr-2 w-6" /><th className="pr-2 w-10" /><th className="pr-2">Título</th><th className="pr-2">Artista</th><th className="pr-2">Key</th><th className="pr-2">BPM</th><th className="pr-2">Gênero</th><th>Selo</th></tr>
           </thead>
           <tbody>
-            {p.tracks.map((t, i) => (
-              <tr key={i} className="border-t border-line/60">
-                <td className="py-1 pr-2"><Cover src={t.coverUrl} size={28} className="rounded" /></td>
-                <td className="pr-2">{storeTitle(t)} {inLib(t) && <span className="text-[10px] text-emerald-400 border border-emerald-500/40 rounded px-1 ml-1">na biblioteca</span>}</td>
-                <td className="pr-2 text-muted">{t.artists}</td>
-                <td className="pr-2"><span className="text-xs">{t.key ?? "—"}</span></td>
-                <td className="pr-2 tabular-nums">{t.bpm ?? "—"}</td>
-                <td className="pr-2 text-xs text-muted">{t.genre ?? ""}</td>
-                <td className="text-xs text-muted">{t.label ?? ""}</td>
-              </tr>
-            ))}
+            {p.tracks.map((t, i) => {
+              const k = parseKey(t.key);
+              return (
+                <tr key={i} className={cn("border-t border-line/60 cursor-pointer", !sel.has(i) && "opacity-50")} onClick={() => toggle(i)}>
+                  <td className="py-1 pr-2"><input type="checkbox" checked={sel.has(i)} onChange={() => toggle(i)} onClick={(e) => e.stopPropagation()} aria-label={`Importar ${t.title}`} /></td>
+                  <td className="pr-2"><Cover src={t.coverUrl} size={28} className="rounded" /></td>
+                  <td className="pr-2">{storeTitle(t)} {inLib(t) && <span className="text-[10px] text-emerald-400 border border-emerald-500/40 rounded px-1 ml-1">na biblioteca</span>}</td>
+                  <td className="pr-2 text-muted">{t.artists}</td>
+                  <td className="pr-2 whitespace-nowrap">{k ? <span className="inline-flex items-center gap-1"><KeyBadge k={k} size="sm" /><span className="text-[10px] text-muted">{camelotToMusical(k)}</span></span> : <span className="text-xs text-muted">{t.key ?? "—"}</span>}</td>
+                  <td className="pr-2 tabular-nums">{t.bpm ?? "—"}</td>
+                  <td className="pr-2 text-xs text-muted">{t.genre ?? ""}</td>
+                  <td className="text-xs text-muted">{t.label ?? ""}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

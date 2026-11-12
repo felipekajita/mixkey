@@ -42,3 +42,18 @@ describe("buildSequences", () => {
     expect(r[0].trackIds.some((id) => r[1].trackIds.includes(id))).toBe(false);
   });
 });
+
+import { setAdjustments, rescoreSequence } from "./index";
+describe("ajustes sugeridos no set", () => {
+  it("sugere retirar a faixa que não combina com nenhuma", () => {
+    const set = [mk("a", "8A", 124, 5), mk("b", "9A", 124, 6), mk("c", "9B", 125, 6), mk("d", "10A", 125, 7), mk("x", "3B", 124, 6), mk("y", "8A", 140, 6)];
+    const map = new Map(set.map((t) => [t.id, t]));
+    const seq = rescoreSequence({ id: "s", name: "S", trackIds: set.map((t) => t.id), transitions: [], score: 0, targets: [], totalSec: 0, stats: { perfect: 0, ok: 0, risky: 0, clash: 0 } }, map, 0.06);
+    const adj = setAdjustments(seq, map, 0.06);
+    const ids = adj.filter((a) => a.kind === "remove").map((a) => a.trackId);
+    expect(ids).toContain("x"); // key sem par
+    expect(ids).toContain("y"); // BPM muito fora
+    expect(ids).not.toContain("a");
+    expect(ids).not.toContain("b");
+  });
+});

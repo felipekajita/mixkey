@@ -40,6 +40,8 @@ O Beatport bloqueia leitura automática, então o MixKey não consulta o site so
 2. Abra no Beatport uma página de faixa, release, chart, playlist ou busca.
 3. Clique no favorito. O MixKey abre com as faixas da página para você confirmar.
 
+O favorito lê sempre os dados **atuais** da página: mesmo que você tenha navegado dentro do site, ele busca o conteúdo da URL aberta. Numa página de **faixa** vem só aquela faixa; num **release**, só as dele; em charts e playlists, só a lista principal. Na **busca**, você marca quais importar. As keys aparecem já em Camelot.
+
 Faixas que já estão na biblioteca ganham os dados do Beatport como fonte "Lojas oficiais", que tem peso alto na votação. As demais são adicionadas. Nos detalhes da faixa, o **Comparativo** mostra lado a lado a análise do MixKey, as plataformas, as lojas oficiais e os seus dados.
 
 ## Ouvir e analisar (música completa)
@@ -52,6 +54,10 @@ Para faixas que só existem online, como no YouTube, abra os detalhes da faixa e
 **Mais rápido com música acelerada:** acelere no player do YouTube (⚙ → Velocidade) e informe a velocidade no MixKey (1,25×, 1,5× ou 2×). O YouTube acelera sem mudar o tom, então a key continua certa, e o MixKey divide o BPM medido pela velocidade. Ex.: 90 s de música a 1,5× levam 60 s. Para house/techno, use até 1,5×; 2× só para faixas até ~100 BPM. Escutas aceleradas pesam um pouco menos na votação (1,5× −10%, 2× −20%).
 
 O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as amostras são descartadas logo em seguida.
+
+## Ajustes sugeridos e roda Camelot
+
+Na tela de sequências, o painel **Ajustes sugeridos** aponta faixas que não combinam com nenhuma outra do set (key ou BPM) e oferece **Retirar do set**, que pode ser desfeito; a faixa continua na biblioteca. Também aponta faixas mal posicionadas e sugere **Reotimizar**. A **roda Camelot** mostra o caminho com números, setas, **Início** e **Fim**, e logo abaixo vem a sequência resumida das keys (ex.: `1 8A → 2 9A ↕ 3 9B …`), com conflitos em vermelho.
 
 ## Prévias
 

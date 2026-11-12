@@ -41,3 +41,38 @@ describe("importação do Beatport", () => {
     expect(code).toContain("https://mixkey.vercel.app");
   });
 });
+
+describe("favorito: filtra pelo tipo de página", () => {
+  const mk = (id: number, rel = 1, extra = {}) => ({ id, slug: `t-${id}`, name: `Faixa ${id}`, mix_name: "Original Mix", artists: [{ name: "Artista" }], bpm: 120 + (id % 10), key: { name: "A Minor" }, release: { id: rel, name: `R${rel}`, label: { name: "Selo" } }, ...extra });
+  const related = Array.from({ length: 150 }, (_, i) => mk(1000 + i, 50 + (i % 7)));
+  it("página de faixa → só a faixa do link (mesmo com 150 relacionadas)", () => {
+    const json = { props: { pageProps: { track: mk(19195696, 77), related, more: { results: related.slice(0, 20) } } } };
+    const r = extractStoreTracks(fakeDoc({}), "https://www.beatport.com/track/bring-it-on/19195696", JSON.stringify(json));
+    expect(r.pageType).toBe("track");
+    expect(r.tracks).toHaveLength(1);
+    expect(r.tracks[0]).toMatchObject({ id: "19195696", title: "Faixa 19195696" });
+  });
+  it("usa os dados ATUAIS (texto buscado) em vez do __NEXT_DATA__ velho do documento", () => {
+    const stale = { props: { pageProps: { results: related } } }; // ficou da busca
+    const fresh = { props: { pageProps: { track: mk(19195696, 77) } } };
+    const r = extractStoreTracks(fakeDoc(stale), "https://www.beatport.com/track/bring-it-on/19195696", JSON.stringify(fresh));
+    expect(r.tracks.map((t) => t.id)).toEqual(["19195696"]);
+  });
+  it("página de faixa sem a faixa nos dados → vazio (o favorito avisa para recarregar)", () => {
+    const r = extractStoreTracks(fakeDoc({ props: { results: related } }), "https://www.beatport.com/track/x/123");
+    expect(r.tracks).toHaveLength(0);
+  });
+  it("release → só as faixas do release", () => {
+    const json = { props: { pageProps: { release: { id: 7310994 }, tracks: [mk(1, 7310994), mk(2, 7310994), mk(3, 7310994)], related } } };
+    const r = extractStoreTracks(fakeDoc({}), "https://www.beatport.com/release/step-into-the-madness/7310994", JSON.stringify(json));
+    expect(r.pageType).toBe("release");
+    expect(r.tracks.map((t) => t.id)).toEqual(["1", "2", "3"]);
+  });
+  it("chart/playlist → só a lista principal, sem recomendados", () => {
+    const main = Array.from({ length: 30 }, (_, i) => mk(i + 1, i + 1));
+    const json = { props: { pageProps: { chart: { tracks: { results: main } }, recommended: related.slice(0, 8) } } };
+    const r = extractStoreTracks(fakeDoc({}), "https://www.beatport.com/chart/meu-chart/123", JSON.stringify(json));
+    expect(r.pageType).toBe("list");
+    expect(r.tracks).toHaveLength(30);
+  });
+});

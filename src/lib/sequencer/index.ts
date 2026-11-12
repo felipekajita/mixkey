@@ -279,3 +279,44 @@ export function findBridges(a: Track, b: Track, library: Track[], maxPitch: numb
     .slice(0, 3)
     .map((x) => x.t);
 }
+
+export interface SetAdjustment {
+  trackId: string;
+  kind: "remove" | "reorder";
+  reason: string;
+  bestFit: number; // melhor nota de transição com qualquer outra faixa do set
+}
+
+/**
+ * Faixas que não combinam com o set:
+ * - "remove": sem nenhum par compatível em key/BPM no set (melhor encaixe < 55),
+ *   ou BPM muito fora do set (além da tolerância de pitch, considerando meio/dobro tempo);
+ * - "reorder": tem par bom no set, mas está mal posicionada (entrada e saída ruins).
+ */
+export function setAdjustments(seq: SequenceResult, tracks: Map<string, Track>, maxPitch: number): SetAdjustment[] {
+  const ts = seq.trackIds.map((id) => tracks.get(id)).filter((t): t is Track => !!t);
+  if (ts.length < 4) return [];
+  const bpms = ts.map((t) => t.bpm).filter((b): b is number => !!b).sort((a, b) => a - b);
+  const median = bpms.length ? bpms[Math.floor(bpms.length / 2)] : undefined;
+  const out: SetAdjustment[] = [];
+  ts.forEach((t, i) => {
+    let bestFit = 0, bestWith = "";
+    for (const o of ts) {
+      if (o.id === t.id) continue;
+      const sc = Math.max(transitionInfo(t, o, maxPitch).score, transitionInfo(o, t, maxPitch).score);
+      if (sc > bestFit) { bestFit = sc; bestWith = o.title; }
+    }
+    const bpmOff = median && t.bpm ? bpmRelation(median, t.bpm, maxPitch) : null;
+    const farBpm = !!bpmOff && bpmOff.pct > maxPitch + 0.02;
+    if (bestFit < 55) {
+      out.push({ trackId: t.id, kind: "remove", bestFit, reason: `Key ${t.key ?? "?"}${t.bpm ? ` · ${t.bpm} BPM` : ""}: não combina com nenhuma faixa do set (melhor encaixe ${bestFit}/100${bestWith ? `, com “${bestWith}”` : ""})` });
+    } else if (farBpm) {
+      out.push({ trackId: t.id, kind: "remove", bestFit, reason: `${t.bpm} BPM está muito longe do set (~${median} BPM, ${bpmOff!.label})` });
+    } else {
+      const inS = i > 0 ? seq.transitions[i - 1]?.score ?? 100 : 100;
+      const outS = i < ts.length - 1 ? seq.transitions[i]?.score ?? 100 : 100;
+      if (inS < 40 && outS < 40) out.push({ trackId: t.id, kind: "reorder", bestFit, reason: `Combina com “${bestWith}” (${bestFit}/100), mas está mal posicionada: entrada ${inS} e saída ${outS}` });
+    }
+  });
+  return out;
+}
