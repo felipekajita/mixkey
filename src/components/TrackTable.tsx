@@ -7,7 +7,7 @@ import { Button, Card, Modal, inputCls, fieldCls, cn } from "./ui";
 import { Cover, KeyBadge, ConfDot, EnergyBar } from "./bits";
 import { formatDuration, normalizeBpm } from "@/lib/bpm";
 import { ALL_CAMELOT, camelotToMusical, camelotToOpenKey } from "@/lib/camelot";
-import { reprocess } from "@/lib/pipeline";
+import { reprocess, resetManual } from "@/lib/pipeline";
 import { usable, verifyLinks } from "@/lib/consensus";
 import { usePreview } from "./usePreview";
 
@@ -117,17 +117,21 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
             <Button size="sm" variant="primary" onClick={() => { update(t.id, { title, artist }); reprocess(t.id); }}>Salvar nome e buscar de novo</Button>
           )}
           <div className="grid grid-cols-3 gap-2">
-            <label className="text-xs text-muted">Key (Camelot)
-              <select className={cn(inputCls, "mt-1")} value={t.key ?? ""} onChange={(e) => update(t.id, { key: e.target.value || undefined, manualKey: true, keyConfidence: "high" })}>
+            <label className="text-xs text-muted">
+              <span className="flex items-center gap-1.5">Key (Camelot) {t.manualKey && <EditedTag onReset={() => resetManual(t.id, ["key"])} />}</span>
+              <select className={cn(inputCls, "mt-1")} value={t.key ?? ""} onChange={(e) => e.target.value === "__auto" ? resetManual(t.id, ["key"]) : update(t.id, { key: e.target.value || undefined, manualKey: true, keyConfidence: "high" })}>
+                <option value="__auto">↺ Automático (fontes)</option>
                 <option value="">—</option>
                 {ALL_CAMELOT.map((k) => <option key={k} value={k}>{k} · {camelotToMusical(k)}</option>)}
               </select>
             </label>
-            <label className="text-xs text-muted">BPM
-              <input type="number" step="0.1" className={cn(inputCls, "mt-1")} defaultValue={t.bpm} onBlur={(e) => { const b = normalizeBpm(parseFloat(e.target.value)); update(t.id, { bpm: b, manualBpm: true, bpmConfidence: b ? "high" : "none" }); }} />
+            <label className="text-xs text-muted">
+              <span className="flex items-center gap-1.5">BPM {t.manualBpm && <EditedTag onReset={() => resetManual(t.id, ["bpm"])} />}</span>
+              <input key={`bpm-${t.bpm}`} type="number" step="0.1" className={cn(inputCls, "mt-1")} defaultValue={t.bpm} onBlur={(e) => { const v = parseFloat(e.target.value); if (v === t.bpm || (!v && !t.bpm)) return; const b = normalizeBpm(v); update(t.id, { bpm: b, manualBpm: true, bpmConfidence: b ? "high" : "none" }); }} />
             </label>
-            <label className="text-xs text-muted">Energia (1–10)
-              <input type="number" min={1} max={10} step="0.5" className={cn(inputCls, "mt-1")} defaultValue={t.energy} onBlur={(e) => update(t.id, { energy: Math.max(1, Math.min(10, parseFloat(e.target.value) || 5)), manualEnergy: true })} />
+            <label className="text-xs text-muted">
+              <span className="flex items-center gap-1.5">Energia (1–10) {t.manualEnergy && <EditedTag onReset={() => resetManual(t.id, ["energy"])} />}</span>
+              <input key={`en-${t.energy}`} type="number" min={1} max={10} step="0.5" className={cn(inputCls, "mt-1")} defaultValue={t.energy} onBlur={(e) => { const v = parseFloat(e.target.value); if (v === t.energy) return; update(t.id, { energy: Math.max(1, Math.min(10, v || 5)), manualEnergy: true }); }} />
             </label>
           </div>
           <div className="text-xs text-muted">
@@ -135,18 +139,23 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
             Duração {formatDuration(t.durationSec)}{t.genres?.length ? ` · ${t.genres.slice(0, 4).join(", ")}` : ""}
           </div>
           {t.bpmNote && !t.manualBpm && <div className="text-xs text-amber-400">⚠ {t.bpmNote}</div>}
-          <div className="flex gap-2">
+          <div>
             <Button size="sm" onClick={() => reprocess(t.id)}><RefreshCw size={14} /> Buscar novamente</Button>
-            {(t.manualKey || t.manualBpm || t.manualEnergy) && <Button size="sm" variant="ghost" onClick={() => { update(t.id, { manualKey: false, manualBpm: false, manualEnergy: false }); reprocess(t.id); }}>Desfazer edições manuais</Button>}
+            <div className="text-[11px] text-muted mt-1">Busca tudo de novo (ignora o cache) e descarta suas edições manuais de key, BPM e energia.</div>
           </div>
         </div>
       </div>
 
-      <h4 className="font-semibold mt-6 mb-2">Fontes consultadas (cruzamento)</h4>
+      <h4 className="font-semibold mt-6 mb-1">Fontes consultadas (cruzamento)</h4>
+      <p className="text-xs text-muted mb-2">
+        <b>Key e BPM</b> vêm da ReccoBeats, das análises de áudio (arquivo e prévias de 30 s de plataformas diferentes), das tags e da sua lista, e o valor final é decidido por votação.
+        As demais plataformas confirmam que é a mesma faixa e trazem capa, duração, gênero e o <b>ISRC</b> (código único da gravação), usado para cruzar com a ReccoBeats.
+      </p>
       <div className="rounded-xl border border-line divide-y divide-line/70 text-sm">
         {t.readings.length === 0 && <div className="p-3 text-muted">Ainda sem dados.</div>}
-        {t.readings.map((r) => {
+        {[...t.readings].sort((a, b) => Number(!!(b.key || b.bpm)) - Number(!!(a.key || a.bpm))).map((r) => {
           const ok = usable(r);
+          const gave = [r.key && "key", r.bpm && "BPM", r.energy != null && "energia", r.coverUrl && "capa", r.isrc && "ISRC", r.genres?.length && "gênero", r.durationSec && "duração", r.previewUrl && "prévia"].filter(Boolean) as string[];
           return (
             <div key={r.source} className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2", !ok && "opacity-60")}>
               <span className="w-44 font-medium">{r.label}</span>
@@ -160,8 +169,12 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
                       {Math.round(r.matchScore * 100)}% {ok ? "compatível" : "nome diferente — ignorado"}
                     </span>
                   )}
-                  {r.matchedTitle && <span className="text-xs text-muted truncate max-w-[16rem]">“{r.matchedTitle} – {r.matchedArtist}”</span>}
                   {r.url && <a href={r.url} target="_blank" rel="noreferrer" className="ml-auto text-muted hover:text-accent"><ExternalLink size={14} /></a>}
+                  <div className="basis-full flex flex-wrap items-center gap-1 pl-0 sm:pl-[11.75rem] -mt-0.5">
+                    {gave.map((g) => <span key={g} className={cn("text-[10px] rounded px-1.5 py-px border", g === "key" || g === "BPM" ? "border-accent/50 text-accent" : "border-line text-muted")}>{g}</span>)}
+                    {r.note && <span className="text-[11px] text-muted">· {r.note}</span>}
+                    {r.matchedTitle && <span className="text-[11px] text-muted truncate max-w-[18rem]">· “{r.matchedTitle} – {r.matchedArtist}”</span>}
+                  </div>
                 </>
               )}
             </div>
@@ -176,5 +189,14 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
         ))}
       </div>
     </Modal>
+  );
+}
+
+function EditedTag({ onReset }: { onReset: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 text-amber-400 px-1.5 text-[10px]">
+      editado
+      <button type="button" onClick={(e) => { e.preventDefault(); onReset(); }} title="Voltar ao valor automático" className="hover:text-fg">↺</button>
+    </span>
   );
 }

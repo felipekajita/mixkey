@@ -6,7 +6,7 @@ import { analyzeAudio, analyzePreview, readTags } from "./audio";
 import { splitArtistTitle, type ParsedTrack } from "./parsers/text";
 import { estimateEnergy } from "./energy";
 import { normalizeName, cleanTitle, splitVersion } from "./match";
-import { getCached, putCached } from "./lookupCache";
+import { getCached, putCached, type PreviewAnalysis } from "./lookupCache";
 
 // Arquivos locais ficam só em memória (não podem ser persistidos)
 const files = new Map<string, File>();
@@ -75,8 +75,12 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
   return { added: tracks.length, skipped: list.length - tracks.length };
 }
 
+/** "Buscar novamente": ignora o cache e descarta as edições manuais de key/BPM/energia */
 export function reprocess(id: string) {
-  useStore.getState().updateTrack(id, (t) => ({ status: "pending", readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source)) }));
+  useStore.getState().updateTrack(id, (t) => ({
+    status: "pending", manualKey: false, manualBpm: false, manualEnergy: false,
+    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source)),
+  }));
   enqueue(() => processTrack(id, true));
 }
 
@@ -147,44 +151,92 @@ async function processTrack(id: string, force = false) {
     if (cached) {
       upd(id, { status: "looking-up", statusText: "Usando dados já buscados…" });
       addReadings(id, cached.readings);
-      if (cached.preview && !files.has(id)) {
-        addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", key: cached.preview.key, bpm: cached.preview.bpm }]);
-        upd(id, { danceability: cached.preview.danceability });
+      if (cached.previews?.length && !files.has(id)) {
+        addReadings(id, cached.previews.map(previewReading));
+        upd(id, { danceability: cached.previews.find((p) => p.danceability != null)?.danceability });
       }
     } else {
       upd(id, { status: "looking-up", statusText: "Buscando nas plataformas…" });
       const r = await fetch("/api/lookup", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: t.title, artist: t.artist, version: t.version, durationSec: t.durationSec, isrc: t.isrc }),
+        body: JSON.stringify({ title: t.title, artist: t.artist, version: t.version, durationSec: t.durationSec, isrc: t.isrc, spotifyId: spotifyIdOf(t) }),
       });
       if (r.ok) {
         const { readings } = (await r.json()) as { readings: SourceReading[] };
         addReadings(id, readings);
-        await putCached(t, { readings, preview: undefined });
+        await putCached(t, { readings, previews: undefined });
       }
     }
     applyConsensus(id);
 
-    // 3) sem arquivo e sem key/BPM confiável → analisa a prévia de 30 s
+    // 3) sem arquivo e sem key/BPM com confiança alta → analisa prévias de 30 s de
+    //    plataformas diferentes (trechos/codificações diferentes) e deixa o consenso votar
     t = get(id)!;
-    const weak = (c: Track["keyConfidence"]) => c === "none" || c === "low";
-    const hasPreviewReading = t.readings.some((r) => r.source === "essentia-preview" && !r.error);
-    if (!files.has(id) && !hasPreviewReading && t.previewUrl && (weak(t.keyConfidence) || weak(t.bpmConfidence))) {
-      upd(id, { statusText: "Analisando prévia de 30 s…" });
-      try {
-        const a = await analyzePreview(t.previewUrl);
-        addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", key: a.key, bpm: a.bpm }]);
-        upd(id, { danceability: a.danceability });
-        await putCached(t, { preview: { key: a.key, bpm: a.bpm, danceability: a.danceability } });
-      } catch (e) {
-        addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", error: (e as Error).message }]);
+    const analyzed = new Set(t.readings.filter((r) => r.source.startsWith("essentia-preview-") && !r.error).map((r) => r.source));
+    const needs = t.keyConfidence !== "high" || t.bpmConfidence !== "high";
+    if (!files.has(id) && needs && analyzed.size < MAX_PREVIEWS) {
+      const done: PreviewAnalysis[] = [];
+      for (const p of previewCandidates(t).filter((p) => !analyzed.has(`essentia-preview-${p.platform}`)).slice(0, MAX_PREVIEWS - analyzed.size)) {
+        upd(id, { statusText: `Analisando prévia (${PREVIEW_LABEL[p.platform]})…` });
+        try {
+          const a = await analyzePreview(p.url);
+          const pa: PreviewAnalysis = { platform: p.platform, key: a.key, bpm: a.bpm, danceability: a.danceability };
+          done.push(pa);
+          addReadings(id, [previewReading(pa)]);
+          if (a.danceability != null) upd(id, { danceability: a.danceability });
+        } catch (e) {
+          addReadings(id, [{ source: `essentia-preview-${p.platform}`, label: `Prévia ${PREVIEW_LABEL[p.platform]} (30 s)`, error: (e as Error).message }]);
+        }
+        applyConsensus(id);
       }
-      applyConsensus(id);
+      if (done.length) {
+        const prev = (await getCached(t))?.previews ?? [];
+        await putCached(t, { previews: [...prev.filter((x) => !done.some((d) => d.platform === x.platform)), ...done] });
+      }
     }
     upd(id, { status: "done", statusText: undefined });
   } catch (e) {
     upd(id, { status: "error", statusText: (e as Error).message });
   }
+}
+
+// ---------- prévias ----------
+const MAX_PREVIEWS = 2;
+const PREVIEW_LABEL: Record<string, string> = { deezer: "Deezer", apple: "Apple Music", spotify: "Spotify", outra: "streaming" };
+
+function previewPlatform(url: string): string {
+  if (/dzcdn\.net|deezer/.test(url)) return "deezer";
+  if (/scdn\.co|spotify/.test(url)) return "spotify";
+  if (/apple\.com|mzstatic/.test(url)) return "apple";
+  return "outra";
+}
+
+/** Prévias disponíveis, uma por plataforma (Deezer primeiro: costuma ser o melhor trecho) */
+function previewCandidates(t: Track): { platform: string; url: string }[] {
+  const urls = [t.previewUrl, ...t.readings.filter((r) => !r.error && r.previewUrl && (r.matchScore == null || r.matchScore >= 0.78)).map((r) => r.previewUrl!)].filter(Boolean) as string[];
+  const by = new Map<string, string>();
+  for (const u of urls) { const p = previewPlatform(u); if (!by.has(p)) by.set(p, u); }
+  return ["deezer", "apple", "spotify", "outra"].filter((p) => by.has(p)).map((p) => ({ platform: p, url: by.get(p)! }));
+}
+
+function previewReading(p: PreviewAnalysis): SourceReading {
+  return { source: `essentia-preview-${p.platform}`, label: `Prévia ${PREVIEW_LABEL[p.platform] ?? p.platform} (30 s)`, key: p.key, bpm: p.bpm };
+}
+
+/** ID do Spotify, se a faixa veio de um link do Spotify (permite cruzar direto na ReccoBeats) */
+function spotifyIdOf(t: Track): string | undefined {
+  const u = t.readings.find((r) => r.source === "link")?.url ?? "";
+  return /open\.spotify\.com\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]+)/.exec(u)?.[1];
+}
+
+/** Volta campos editados à mão para o valor automático (consenso das fontes) */
+export function resetManual(id: string, fields: ("key" | "bpm" | "energy")[]) {
+  const patch: Partial<Track> = {};
+  if (fields.includes("key")) patch.manualKey = false;
+  if (fields.includes("bpm")) patch.manualBpm = false;
+  if (fields.includes("energy")) patch.manualEnergy = false;
+  upd(id, patch);
+  applyConsensus(id);
 }
 
 export function hasLocalFile(id: string) {

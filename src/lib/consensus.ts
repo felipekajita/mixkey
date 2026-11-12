@@ -7,6 +7,8 @@ const KEY_W: Record<string, number> = {
 };
 const COVER_ORDER = ["tags", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 
+const weight = (source: string) => KEY_W[source] ?? (source.startsWith("essentia-preview") ? 1.8 : 1.5);
+
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
 export function computeConsensus(readings: SourceReading[], extraGenres: string[] = []): Partial<Track> {
@@ -16,7 +18,7 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
   // KEY
   const kv = new Map<string, number>();
   let kTotal = 0;
-  for (const r of ok) if (r.key) { const w = KEY_W[r.source] ?? 1.5; kv.set(r.key, (kv.get(r.key) ?? 0) + w); kTotal += w; }
+  for (const r of ok) if (r.key) { const w = weight(r.source); kv.set(r.key, (kv.get(r.key) ?? 0) + w); kTotal += w; }
   if (kv.size) {
     const [k, w] = [...kv.entries()].sort((a, b) => b[1] - a[1])[0];
     out.key = k;
@@ -30,7 +32,13 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
   extraGenres.forEach((g) => genres.add(g.toLowerCase()));
 
   // BPM: agrupa leituras iguais ou em meio/dobro tempo e escolhe a oitava certa
-  const bs = ok.filter((r) => r.bpm).map((r) => ({ b: r.bpm!, w: KEY_W[r.source] ?? 1.5 }));
+  const isAnalysis = (s: string) => s.startsWith("essentia");
+  const nAnalyses = ok.filter((r) => r.bpm && isAnalysis(r.source)).length;
+  const bs = ok.filter((r) => r.bpm).map((r) => ({
+    b: r.bpm!, w: weight(r.source),
+    // as análises dividem um único "voto" de oitava (mesmo detector), com peso reduzido
+    octaveW: isAnalysis(r.source) ? (weight(r.source) * 0.6) / nAnalyses : weight(r.source),
+  }));
   const br = resolveBpm(bs, [...genres]);
   if (br) {
     out.bpm = br.bpm;

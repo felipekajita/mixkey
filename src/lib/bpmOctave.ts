@@ -5,7 +5,11 @@
  *  1. leituras de fontes diferentes que diferem por ×2/÷2 contam como a MESMA leitura;
  *  2. a "oitava" final é escolhida pelos votos das fontes e pelo gênero da faixa.
  */
-export interface BpmVote { b: number; w: number }
+/**
+ * `octaveW`: peso na escolha entre meio/dobro tempo. Análises de áudio (Essentia) usam o
+ * mesmo detector e erram a oitava juntas, então pesam menos aqui do que BPMs de catálogo.
+ */
+export interface BpmVote { b: number; w: number; octaveW?: number }
 
 /** Faixas típicas de BPM por gênero (a ordem importa: mais específico primeiro) */
 const GENRE_RANGES: [RegExp, number, number][] = [
@@ -20,7 +24,7 @@ const GENRE_RANGES: [RegExp, number, number][] = [
   [/house|tech house|deep house|progressive|melodic|afro house|edm|electro|disco|dance|club|garage|bass house|big room|future house/, 110, 132],
   [/reggaeton|dembow|moombahton/, 88, 110],
   [/funk carioca|baile funk|brazilian funk/, 125, 135],
-  [/hip[\s-]?hop|\brap\b|boom bap|r&b|rnb/, 75, 115],
+  [/hip[\s-]?hop|\brap\b|boom bap/, 75, 115],
   [/downtempo|chill|lo-?fi|trip hop|ambient/, 70, 110],
 ];
 
@@ -53,14 +57,18 @@ export function resolveBpm(votes: BpmVote[], genres: string[] = []): BpmResult |
 
   // 2) escolhe a oitava: votos das fontes + gênero
   const range = genreRange(genres);
+  // com BPM de catálogo (fontes que não são análise de áudio), o gênero só desempata
+  const catalogW = g.members.filter((x) => x.v.octaveW == null || x.v.octaveW >= x.v.w).reduce((acc, x) => acc + x.v.w, 0);
+  const hasCatalog = catalogW >= 3;
+  const genreBonus = hasCatalog ? 0.75 : 3;
   const cands = OCT.map((m) => avg * m).filter((b) => b >= 60 && b <= 200);
   let pick = avg, pickScore = -Infinity;
   for (const b of cands) {
-    const votesHere = g.members.filter((x) => near(x.v.b, b, 0.03)).reduce((a, x) => a + x.v.w, 0);
+    const votesHere = g.members.filter((x) => near(x.v.b, b, 0.03)).reduce((a, x) => a + (x.v.octaveW ?? x.v.w), 0);
     let score = votesHere;
     if (range) {
-      if (b >= range[0] && b <= range[1]) score += 3;
-      else score -= Math.min(Math.abs(b - range[0]), Math.abs(b - range[1])) / 20;
+      if (b >= range[0] && b <= range[1]) score += genreBonus;
+      else score -= (Math.min(Math.abs(b - range[0]), Math.abs(b - range[1])) / 20) * (hasCatalog ? 0.25 : 1);
     } else if (b < 70 || b > 185) score -= 1; // sem gênero: evita extremos
     if (score > pickScore) { pick = b; pickScore = score; }
   }

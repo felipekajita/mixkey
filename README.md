@@ -5,8 +5,8 @@ Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **col
 1. Identifica **key (Camelot)** e **BPM** de cada faixa:
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
    - pela **análise do áudio no navegador** (Essentia.js — os arquivos nunca saem do seu computador);
-   - pela **análise da prévia de 30 s** (Deezer) das faixas que vieram de uma lista;
-   - por **cruzamento com plataformas**: ReccoBeats (via Spotify), Deezer, MusicBrainz…
+   - pela **análise de até 2 prévias de 30 s de plataformas diferentes** (Deezer, Apple Music, Spotify) das faixas que vieram de lista ou link;
+   - pela **ReccoBeats** (sem chave), encontrada pelo ID do Spotify do link, pelo **ISRC** (código único da gravação, vindo do Deezer, MusicBrainz ou Spotify) ou por busca de nome;
    - O resultado final é decidido por **votação**. Cada valor vem com um indicador de confiança (🟢🟡🔴) e a lista "fonte → valor".
 2. Busca as **capas** (tags, Deezer, Spotify, Apple Music, YouTube Music, Last.fm e MusicBrainz). Um resultado só é aceito quando o **nome confere** (título + artista; remix ≠ original).
 3. Sugere **várias sequências** (Set A/B/C) que respeitam a roda Camelot, a tolerância de pitch e a **curva de energia** da vibe escolhida:
@@ -69,13 +69,14 @@ npm test                     # testes unitários
 | Apple Music (iTunes Search) | — | capa em alta |
 | MusicBrainz + Cover Art Archive | — | capa, ISRC |
 | YouTube Music (site) | — | capa |
-| Spotify | `SPOTIFY_CLIENT_ID/SECRET` | capa, ISRC, **habilita a ReccoBeats** |
-| ReccoBeats | (usa o Spotify) | **key, BPM, energia** |
+| Spotify | `SPOTIFY_CLIENT_ID/SECRET` | capa, ISRC, playlists inteiras, busca extra para a ReccoBeats |
+| ReccoBeats | — | **key, BPM, energia** (por ID do Spotify, ISRC ou nome) |
 | Last.fm | `LASTFM_API_KEY` | faixas similares, gêneros |
 
 **Observações:**
 - Cada faixa tem links para **verificar manualmente** a key/BPM no VocalRemover, LANDR e Ghost Production (que analisam o arquivo enviado), além de links de busca nas plataformas de streaming.
-- Recomendação: **crie a chave do Spotify**. Ela é gratuita e libera a ReccoBeats, a fonte online mais completa de key/BPM.
+- As análises de áudio usam o mesmo detector e às vezes erram juntas em meio tempo. Por isso, na escolha entre meio e dobro tempo, elas pesam menos que o BPM de catálogo (ReccoBeats, Deezer, tags).
+- **Buscar novamente** (nos detalhes da faixa) ignora o cache e descarta as edições manuais. Para desfazer só uma edição, use "↺ Automático" na key ou o ↺ ao lado do campo editado.
 
 ## Importar no Rekordbox
 

@@ -15,6 +15,7 @@ export interface SourceReading {
   previewUrl?: string;
   genres?: string[];
   energy?: number;        // 1..10
+  note?: string;          // detalhe exibido (ex.: "identificada por ISRC")
   error?: string;
 }
 
@@ -55,4 +56,5 @@ export interface LookupQuery {
   version?: string;
   durationSec?: number;
   isrc?: string;
+  spotifyId?: string;
 }

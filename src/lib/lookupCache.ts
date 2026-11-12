@@ -12,14 +12,17 @@ const TTL = 1000 * 60 * 60 * 24 * 30; // 30 dias
 let store: ReturnType<typeof createStore> | null = null;
 const db = () => (store ??= createStore("mixkey-cache", "lookups"));
 
+export interface PreviewAnalysis { platform: string; key?: string; bpm?: number; danceability?: number }
+
 export interface CachedLookup {
   at: number;
   readings: SourceReading[];
-  preview?: { key?: string; bpm?: number; danceability?: number };
+  previews?: PreviewAnalysis[];
 }
 
+// "v2": versão do formato (v1 não tinha ReccoBeats sem chave nem várias prévias)
 export const cacheKey = (t: { title: string; artist: string; isrc?: string }) =>
-  `${normalizeName(t.artist)}|${normalizeName(t.title)}`;
+  `v2|${normalizeName(t.artist)}|${normalizeName(t.title)}`;
 
 /** Links assinados (ex.: prévias do Deezer com "hdnea=") expiram em minutos — não vale guardar */
 const expiring = (u?: string) => !!u && /hdnea=|[?&](exp|expires|Expires|token)=/.test(u);
