@@ -4,7 +4,7 @@
  * com as demais.
  */
 import type { SourceDef } from "./index";
-import { pickBest } from "./index";
+import { pickBest } from "./pick";
 import { fetchText, deepFind } from "./http";
 import { cleanTitle } from "../match";
 import { parseDuration } from "../bpm";

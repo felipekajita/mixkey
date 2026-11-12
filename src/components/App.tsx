@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Moon, Sun, Library, Wand2, ListOrdered, Database, ChevronRight } from "lucide-react";
+import { Moon, Sun, Library, Wand2, ListOrdered, Database, ChevronRight, HardDriveDownload } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { resumePending } from "@/lib/pipeline";
 import AddTracks from "./AddTracks";
@@ -9,6 +9,7 @@ import Suggestions from "./Suggestions";
 import Builder from "./Builder";
 import Results from "./Results";
 import { Button, Modal, Toast, cn } from "./ui";
+import BackupModal from "./BackupModal";
 
 interface SrcStatus { id: string; label: string; kind: string; provides: string[]; enabled: boolean }
 
@@ -21,6 +22,7 @@ export default function App() {
   const [dark, setDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [srcOpen, setSrcOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
   const [sources, setSources] = useState<SrcStatus[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -78,6 +80,7 @@ export default function App() {
             ))}
           </nav>
           <div className="ml-auto md:ml-0 flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setBackupOpen(true)} title="Backup do projeto"><HardDriveDownload size={16} /><span className="hidden sm:inline">Backup</span></Button>
             <Button variant="ghost" size="sm" onClick={() => setSrcOpen(true)} title="Fontes de dados"><Database size={16} /><span className="hidden sm:inline">Fontes</span></Button>
             <Button variant="ghost" size="sm" onClick={toggleTheme} aria-label="Alternar tema">{dark ? <Sun size={16} /> : <Moon size={16} />}</Button>
           </div>
@@ -139,6 +142,7 @@ export default function App() {
           ))}
         </div>
       </Modal>
+      <BackupModal open={backupOpen} onClose={() => setBackupOpen(false)} notify={notify} />
       <Toast msg={toast} />
     </div>
   );

@@ -5,7 +5,7 @@ import { MATCH_THRESHOLD } from "./match";
 const KEY_W: Record<string, number> = {
   list: 4, tags: 3, essentia: 3, reccobeats: 2.5, "essentia-preview": 1.8, deezer: 1,
 };
-const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
+const COVER_ORDER = ["tags", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 

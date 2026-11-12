@@ -56,3 +56,20 @@ describe("parseText tabela", () => {
     expect(r[0]).toMatchObject({ title: "Cola", artist: "CamelPhat", durationSec: 432, fileName: "CamelPhat - Cola.mp3" });
   });
 });
+
+import { detectTable, mapRows, parseTextTable } from "./text";
+describe("mapeamento de colunas", () => {
+  it("detecta e permite corrigir", () => {
+    const t = parseTextTable("Nome;Artista;Tom\nCola;CamelPhat;Gm\nOpus;Eric Prydz;Bm")!;
+    expect(t.fields.slice(0, 3)).toEqual(["title", "artist", "key"]);
+    // usuário troca: coluna 0 = artista, coluna 1 = título
+    const fixed = mapRows({ ...t, fields: ["artist", "title", "key"] });
+    expect(fixed[0]).toMatchObject({ artist: "Cola", title: "CamelPhat", key: "6A" });
+  });
+  it("sem cabeçalho → inferência", () => {
+    const t = detectTable([["CamelPhat", "Cola", 122], ["Eric Prydz", "Opus", 126]])!;
+    expect(t.hasHeader).toBe(false);
+    expect(t.fields).toEqual(["artist", "title", "bpm"]);
+    expect(mapRows({ ...t, hasHeader: true })).toHaveLength(1);
+  });
+});

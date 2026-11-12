@@ -1,6 +1,6 @@
 # MixKey 🎛️ — sets harmônicos (Camelot + BPM) para Rekordbox
 
-Envie **arquivos de áudio**, uma **lista/planilha** ou **cole um texto** com faixas. O MixKey:
+Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **cole links** (Spotify, Deezer, Apple Music, YouTube, YouTube Music, SoundCloud…). O MixKey:
 
 1. Identifica **key (Camelot)** e **BPM** de cada faixa:
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
@@ -14,6 +14,31 @@ Envie **arquivos de áudio**, uma **lista/planilha** ou **cole um texto** com fa
    - **Final do set:** no clímax, animado, mais leve ou bem suave.
 4. Mostra o set de forma visual: timeline com as transições (✓ mesmo tom, ↕ relativa, ⚡ boost, ⚠ conflito), dicas de mixagem, gráfico de energia, caminho na roda Camelot, grade de capas e **modo cabine** em tela cheia para usar ao vivo.
 5. Exporta **M3U8** para o Rekordbox, além de CSV e texto. Sugere **faixas dos mesmos artistas ou de artistas parecidos**, com prévia e nota de compatibilidade.
+
+## Colar links
+
+Na aba **Links**, cole um link por linha. Também dá para colar links na aba **Colar** ou arrastá-los para a tela.
+
+| Plataforma | Faixa | Álbum | Playlist |
+|---|---|---|---|
+| Spotify (também `spotify:track:…` e `spotify.link`) | ✅ | ✅ | ✅ até 50 faixas sem chave; inteira com a chave da API |
+| Deezer (também `link.deezer.com`) | ✅ | ✅ | ✅ (públicas) |
+| Apple Music | ✅ | ✅ | ✅ |
+| YouTube / YouTube Music / youtu.be | ✅ (limpa "Official Video" etc.) | — | ❌ cole os links das músicas |
+| SoundCloud | ✅ | — | ❌ só o nome do set |
+| Beatport | ⚠️ só o título (o site bloqueia leitura automática) | — | — |
+| Tidal, Bandcamp, Shazam e outros | ⚠️ pelas meta tags da página, quando disponíveis | | |
+| Amazon Music | ❌ a página não expõe os dados — cole o nome | | |
+
+As faixas lidas dos links passam pelo mesmo cruzamento de fontes e pela análise da prévia para obter key/BPM.
+
+## Planilhas: mapeamento de colunas
+
+Ao importar CSV/XLSX ou colar células de planilha, o MixKey detecta sozinho o que é título, artista, key, BPM e duração. Na pré-visualização, cada coluna tem um seletor para corrigir a detecção. Também dá para marcar ou desmarcar "Primeira linha é cabeçalho".
+
+## Backup
+
+A biblioteca e os sets ficam salvos no navegador. No botão **Backup** (no topo), baixe um `.json` com tudo: faixas analisadas, sets salvos e preferências. Para restaurar em outro navegador ou computador, use o mesmo botão; dá para **juntar** sem duplicar ou **substituir** tudo. Os arquivos de áudio não entram no backup.
 
 ## Rodar localmente
 

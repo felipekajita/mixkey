@@ -60,10 +60,12 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
     existing.add(k);
     const readings: SourceReading[] = [];
     if (p.key || p.bpm) readings.push({ source: "list", label: "Sua lista", key: p.key, bpm: p.bpm, durationSec: p.durationSec });
+    if (p.sourceUrl) readings.push({ source: "link", label: `Link (${p.sourceLabel ?? "colado"})`, coverUrl: p.coverUrl, durationSec: p.durationSec, isrc: p.isrc, previewUrl: p.previewUrl, url: p.sourceUrl });
     tracks.push(blankTrack({
       title: p.title, artist: p.artist, version: p.version ?? splitVersion(p.title).version, durationSec: p.durationSec,
       key: p.key, bpm: p.bpm, energy: p.energy, manualEnergy: p.energy != null, fileName: p.fileName,
       genres: p.genre ? [p.genre] : undefined, origin, readings,
+      coverUrl: p.coverUrl, isrc: p.isrc, previewUrl: p.previewUrl,
       keyConfidence: p.key ? "medium" : "none", bpmConfidence: p.bpm ? "medium" : "none",
     }));
   }

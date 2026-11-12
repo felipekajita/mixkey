@@ -1,5 +1,5 @@
 import type { SourceDef } from "./index";
-import { pickBest } from "./index";
+import { pickBest } from "./pick";
 import { fetchJson } from "./http";
 import { cleanTitle } from "../match";
 import type { LookupQuery } from "../types";

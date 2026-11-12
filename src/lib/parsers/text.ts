@@ -12,9 +12,20 @@ export interface ParsedTrack {
   energy?: number;
   fileName?: string;
   genre?: string;
+  // vindos de links colados
+  coverUrl?: string;
+  isrc?: string;
+  previewUrl?: string;
+  sourceUrl?: string;
+  sourceLabel?: string;
 }
 
-type Field = "title" | "artist" | "key" | "bpm" | "duration" | "energy" | "file" | "genre" | "trackartist" | "ignore";
+export type Field = "title" | "artist" | "key" | "bpm" | "duration" | "energy" | "file" | "genre" | "trackartist" | "ignore";
+
+export const FIELD_LABELS: Record<Field, string> = {
+  title: "Título", artist: "Artista", trackartist: "Artista - Título", key: "Key / Tom", bpm: "BPM",
+  duration: "Duração", energy: "Energia", file: "Arquivo", genre: "Gênero", ignore: "Ignorar",
+};
 
 const HEADER_PATTERNS: [Field, RegExp][] = [
   ["trackartist", /^(artist\s*-\s*title|artista\s*-\s*t[ií]tulo|track\s*name|faixa\s*completa)$/i],
@@ -136,28 +147,37 @@ function detectDelimiter(lines: string[]): string | null {
 }
 
 /** Converte linhas de tabela (planilha/CSV/texto tabulado) em faixas */
-export function rowsToTracks(rows: unknown[][]): ParsedTrack[] {
+export interface TableInfo { rows: (string | number)[][]; fields: Field[]; hasHeader: boolean }
+
+/** Limpa as linhas e detecta cabeçalho + tipo de cada coluna */
+export function detectTable(rows: unknown[][]): TableInfo | null {
   const clean = rows
     .map((r) => r.map((c) => (c == null ? "" : typeof c === "number" ? c : String(c).trim())))
     .filter((r) => r.some((c) => c !== ""));
-  if (!clean.length) return [];
-
-  let fields: (Field | null)[] | null = null;
+  if (!clean.length) return null;
+  const ncolAll = Math.max(...clean.map((r) => r.length));
   const header = clean[0].map((c) => headerField(String(c)));
   const hasHeader = header.filter(Boolean).length >= 1 && clean[0].every((c) => typeof c !== "number");
-  if (hasHeader) fields = header;
-  const body = hasHeader ? clean.slice(1) : clean;
+  let fields: Field[];
+  if (hasHeader) {
+    fields = Array.from({ length: ncolAll }, (_, i) => header[i] ?? "ignore");
+    // "title" detectado duas vezes (ex.: "Nome" e "Faixa") → mantém o primeiro
+    let seenTitle = false;
+    fields = fields.map((f) => (f === "title" ? (seenTitle ? "ignore" : ((seenTitle = true), f)) : f));
+  } else fields = inferFields(clean, ncolAll);
+  return { rows: clean, fields, hasHeader };
+}
 
-  if (!fields) {
-    // inferir por conteúdo
-    const ncol = Math.max(...body.map((r) => r.length));
-    fields = [];
+/** Inferência das colunas pelo conteúdo */
+export function inferFields(body: (string | number)[][], ncol = Math.max(...body.map((r) => r.length))): Field[] {
+  {
+    const fields: (Field | null)[] = [];
     const textCols: number[] = [];
     for (let c = 0; c < ncol; c++) {
       const vals = body.map((r) => r[c]).filter((v) => v !== "" && v != null).map(String);
       if (!vals.length) { fields.push("ignore"); continue; }
       const frac = (fn: (s: string) => boolean) => vals.filter(fn).length / vals.length;
-      if (frac((v) => /^\d{1,4}$/.test(v)) > 0.9 && vals.every((v, i) => i === 0 || +v >= +vals[i - 1])) fields.push("ignore"); // numeração
+      if (vals.every((v, i) => /^\d{1,4}$/.test(v) && +v === +vals[0] + i) && +vals[0] <= 1) fields.push("ignore"); // numeração 1, 2, 3…
       else if (frac(isKey) > 0.8 && frac((v) => v.length <= 10) > 0.9) fields.push("key");
       else if (frac(isDuration) > 0.8) fields.push("duration");
       else if (frac(isBpm) > 0.8) fields.push("bpm");
@@ -165,13 +185,24 @@ export function rowsToTracks(rows: unknown[][]): ParsedTrack[] {
     }
     if (textCols.length === 1) fields[textCols[0]] = "trackartist";
     else if (textCols.length >= 2) { fields[textCols[0]] = "artist"; fields[textCols[1]] = "title"; }
+    return fields.map((f) => f ?? "ignore");
   }
+}
 
+/** Converte linhas de tabela (planilha/CSV/texto tabulado) em faixas */
+export function rowsToTracks(rows: unknown[][]): ParsedTrack[] {
+  const t = detectTable(rows);
+  return t ? mapRows(t) : [];
+}
+
+/** Aplica o mapeamento de colunas (automático ou escolhido pelo usuário) */
+export function mapRows({ rows, fields, hasHeader }: TableInfo): ParsedTrack[] {
+  const body = hasHeader ? rows.slice(1) : rows;
   const out: ParsedTrack[] = [];
   for (const r of body) {
     let title = "", artist = "", key: string | undefined, bpm: number | undefined, dur: number | undefined, energy: number | undefined, fileName: string | undefined, genre: string | undefined;
     r.forEach((v, i) => {
-      const f = fields![i];
+      const f = fields[i];
       const s = String(v ?? "").trim();
       if (!s) return;
       switch (f) {
@@ -192,6 +223,14 @@ export function rowsToTracks(rows: unknown[][]): ParsedTrack[] {
     if (t) out.push(t);
   }
   return out;
+}
+
+/** Texto colado em formato de tabela (tab, ; ou |) → tabela para mapear colunas */
+export function parseTextTable(text: string): TableInfo | null {
+  const lines = text.replace(/\r/g, "").split("\n").map((l) => l.trimEnd()).filter((l) => l.trim());
+  if (!lines.length || /^#EXTM3U/.test(lines[0])) return null;
+  const d = detectDelimiter(lines);
+  return d ? detectTable(lines.map((l) => l.split(d))) : null;
 }
 
 /** Texto colado: detecta se é tabela (tab/;/|) ou lista livre */

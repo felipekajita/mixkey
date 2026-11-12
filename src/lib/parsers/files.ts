@@ -1,36 +1,39 @@
 import Papa from "papaparse";
-import { parseText, rowsToTracks, type ParsedTrack } from "./text";
+import { parseText, parseTextTable, rowsToTracks, detectTable, mapRows, type ParsedTrack, type TableInfo } from "./text";
+
+export interface ParsedInput { tracks: ParsedTrack[]; table?: TableInfo }
 
 /** Lê arquivos de lista: .txt, .csv, .tsv, .m3u/.m3u8, .xlsx/.xls/.ods, .xml (Rekordbox), .json */
-export async function parseListFile(file: File): Promise<ParsedTrack[]> {
+export async function parseListFile(file: File): Promise<ParsedInput> {
   const name = file.name.toLowerCase();
+  const fromTable = (t: TableInfo | null): ParsedInput => (t ? { tracks: mapRows(t), table: t } : { tracks: [] });
   if (/\.(xlsx|xlsm|xls|ods|numbers)$/.test(name)) {
     const XLSX = await import("xlsx");
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const all: ParsedTrack[] = [];
-    for (const sn of wb.SheetNames) {
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sn], { header: 1, raw: true, defval: "" });
-      all.push(...rowsToTracks(rows));
-    }
-    return all;
+    const tables = wb.SheetNames
+      .map((sn) => detectTable(XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sn], { header: 1, raw: true, defval: "" })))
+      .filter((t): t is TableInfo => !!t);
+    if (tables.length === 1) return fromTable(tables[0]);
+    return { tracks: tables.flatMap(mapRows) };
   }
   const text = await file.text();
   if (name.endsWith(".csv")) {
     const res = Papa.parse<string[]>(text.trim(), { skipEmptyLines: true });
-    return rowsToTracks(res.data);
+    return fromTable(detectTable(res.data));
   }
-  if (name.endsWith(".xml") && /DJ_PLAYLISTS/.test(text)) return parseRekordboxXml(text);
+  if (name.endsWith(".xml") && /DJ_PLAYLISTS/.test(text)) return { tracks: parseRekordboxXml(text) };
   if (name.endsWith(".json")) {
     try {
       const data = JSON.parse(text);
       const arr = Array.isArray(data) ? data : data.tracks;
       if (Array.isArray(arr)) {
         const keys = Object.keys(arr[0] ?? {});
-        return rowsToTracks([keys, ...arr.map((o: Record<string, unknown>) => keys.map((k) => o[k]))]);
+        return { tracks: rowsToTracks([keys, ...arr.map((o: Record<string, unknown>) => keys.map((k) => o[k]))]) };
       }
     } catch { /* cai para texto */ }
   }
-  return parseText(text);
+  const table = parseTextTable(text);
+  return table ? fromTable(table) : { tracks: parseText(text) };
 }
 
 function parseRekordboxXml(xml: string): ParsedTrack[] {
