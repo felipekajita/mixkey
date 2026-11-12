@@ -7,6 +7,10 @@ import { splitArtistTitle, type ParsedTrack } from "./parsers/text";
 import { estimateEnergy } from "./energy";
 import { normalizeName, cleanTitle, splitVersion } from "./match";
 import { getCached, putCached, type PreviewAnalysis } from "./lookupCache";
+import type { StorePayload } from "./store-import/parse";
+import type { StoreTrack } from "./store-import/extract";
+import { parseKey } from "./camelot";
+import { matchScore } from "./match";
 
 // Arquivos locais ficam só em memória (não podem ser persistidos)
 const files = new Map<string, File>();
@@ -79,7 +83,7 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
 export function reprocess(id: string) {
   useStore.getState().updateTrack(id, (t) => ({
     status: "pending", manualKey: false, manualBpm: false, manualEnergy: false,
-    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source)),
+    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source) || r.source.startsWith("store-")),
   }));
   enqueue(() => processTrack(id, true));
 }
@@ -228,6 +232,58 @@ function previewReading(p: PreviewAnalysis): SourceReading {
 function spotifyIdOf(t: Track): string | undefined {
   const u = t.readings.find((r) => r.source === "link")?.url ?? "";
   return /open\.spotify\.com\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]+)/.exec(u)?.[1];
+}
+
+/** Título como as lojas mostram: "Cola (Original Mix)" — "Original Mix"/"Extended Mix" viram versão */
+export function storeTitle(t: StoreTrack) {
+  return t.mix && !/^original mix$/i.test(t.mix) ? `${t.title} (${t.mix})` : t.title;
+}
+
+function storeReading(store: string, t: StoreTrack): SourceReading {
+  return {
+    source: `store-${store.toLowerCase().replace(/[^a-z0-9]+/g, "")}`, label: `${store} (loja)`,
+    key: parseKey(t.key), bpm: t.bpm, coverUrl: t.coverUrl, isrc: t.isrc, durationSec: t.durationSec,
+    genres: t.genre ? [t.genre] : undefined, url: t.url,
+    matchedTitle: storeTitle(t), matchedArtist: t.artists,
+    note: [t.label && `selo ${t.label}`, t.key && `key ${t.key}`].filter(Boolean).join(" · ") || undefined,
+  };
+}
+
+/**
+ * Importa faixas vindas de uma loja (botão "Enviar para o MixKey").
+ * Faixas que já existem na biblioteca ganham a leitura da loja (mais um voto);
+ * as demais são adicionadas como novas.
+ */
+export function importStoreTracks(p: StorePayload): { merged: number; added: number } {
+  const st = useStore.getState();
+  let merged = 0;
+  const fresh: ParsedTrack[] = [];
+  for (const t of p.tracks) {
+    const want = { title: storeTitle(t), artist: t.artists };
+    let best: { id: string; s: number } | null = null;
+    for (const x of st.tracks) {
+      let s = matchScore(x, want);
+      if (t.isrc && x.isrc && t.isrc === x.isrc) s = 1;
+      if (!best || s > best.s) best = { id: x.id, s };
+    }
+    if (best && best.s >= 0.85) {
+      addReadings(best.id, [storeReading(p.store, t)]);
+      applyConsensus(best.id);
+      merged++;
+    } else {
+      fresh.push({ title: want.title, artist: t.artists, durationSec: t.durationSec, coverUrl: t.coverUrl, isrc: t.isrc, sourceUrl: t.url ?? p.url, sourceLabel: p.store, key: undefined, bpm: undefined, genre: t.genre });
+    }
+  }
+  if (fresh.length) {
+    const before = new Set(useStore.getState().tracks.map((x) => x.id));
+    addParsedTracks(fresh);
+    // a leitura da loja entra já na criação, antes da busca nas plataformas
+    for (const x of useStore.getState().tracks.filter((x) => !before.has(x.id))) {
+      const t = p.tracks.find((s) => storeTitle(s) === x.title && s.artists === x.artist);
+      if (t) { addReadings(x.id, [storeReading(p.store, t)]); applyConsensus(x.id); }
+    }
+  }
+  return { merged, added: fresh.length };
 }
 
 /** Volta campos editados à mão para o valor automático (consenso das fontes) */

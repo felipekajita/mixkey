@@ -32,6 +32,15 @@ Na aba **Links**, cole um link por linha. Também dá para colar links na aba **
 
 As faixas lidas dos links passam pelo mesmo cruzamento de fontes e pela análise da prévia para obter key/BPM.
 
+## Dados oficiais do Beatport (favorito "→ MixKey")
+
+O Beatport bloqueia leitura automática, então o MixKey não consulta o site sozinho. Para trazer os dados oficiais (BPM, key, gênero, selo, ISRC e capa em alta), use o favorito:
+1. Na aba **Links**, arraste o botão **→ MixKey** para a barra de favoritos do navegador.
+2. Abra no Beatport uma página de faixa, release, chart, playlist ou busca.
+3. Clique no favorito. O MixKey abre com as faixas da página para você confirmar.
+
+Faixas que já estão na biblioteca ganham os dados do Beatport como fonte "Lojas oficiais", que tem peso alto na votação. As demais são adicionadas. Nos detalhes da faixa, o **Comparativo** mostra lado a lado a análise do MixKey, as plataformas, as lojas oficiais e os seus dados.
+
 ## Planilhas: mapeamento de colunas
 
 Ao importar CSV/XLSX ou colar células de planilha, o MixKey detecta sozinho o que é título, artista, key, BPM e duração. Na pré-visualização, cada coluna tem um seletor para corrigir a detecção. Também dá para marcar ou desmarcar "Primeira linha é cabeçalho".

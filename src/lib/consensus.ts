@@ -5,20 +5,25 @@ import { MATCH_THRESHOLD } from "./match";
 const KEY_W: Record<string, number> = {
   list: 4, tags: 3, essentia: 3, reccobeats: 2.5, "essentia-preview": 1.8, deezer: 1,
 };
-const COVER_ORDER = ["tags", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
+const COVER_ORDER = ["tags", "store-beatport", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 
-const weight = (source: string) => KEY_W[source] ?? (source.startsWith("essentia-preview") ? 1.8 : 1.5);
+// lojas (Beatport…): referência da indústria para DJs → peso alto
+const weight = (source: string) => KEY_W[source] ?? (source.startsWith("store-") ? 3.5 : source.startsWith("essentia-preview") ? 1.8 : 1.5);
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
 export function computeConsensus(readings: SourceReading[], extraGenres: string[] = []): Partial<Track> {
   const ok = readings.filter(usable);
   const out: Partial<Track> = {};
+  // as prévias usam o mesmo detector: juntas valem no máximo 3 (uma opinião forte, não três)
+  const nPrev = ok.filter((r) => r.source.startsWith("essentia-preview")).length;
+  const prevScale = nPrev ? Math.min(1, 3 / (1.8 * nPrev)) : 1;
+  const w = (src: string) => weight(src) * (src.startsWith("essentia-preview") ? prevScale : 1);
 
   // KEY
   const kv = new Map<string, number>();
   let kTotal = 0;
-  for (const r of ok) if (r.key) { const w = weight(r.source); kv.set(r.key, (kv.get(r.key) ?? 0) + w); kTotal += w; }
+  for (const r of ok) if (r.key) { const wk = w(r.source); kv.set(r.key, (kv.get(r.key) ?? 0) + wk); kTotal += wk; }
   if (kv.size) {
     const [k, w] = [...kv.entries()].sort((a, b) => b[1] - a[1])[0];
     out.key = k;
@@ -35,7 +40,7 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
   const isAnalysis = (s: string) => s.startsWith("essentia");
   const nAnalyses = ok.filter((r) => r.bpm && isAnalysis(r.source)).length;
   const bs = ok.filter((r) => r.bpm).map((r) => ({
-    b: r.bpm!, w: weight(r.source),
+    b: r.bpm!, w: w(r.source),
     // as análises dividem um único "voto" de oitava (mesmo detector), com peso reduzido
     octaveW: isAnalysis(r.source) ? (weight(r.source) * 0.6) / nAnalyses : weight(r.source),
   }));

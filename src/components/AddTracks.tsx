@@ -1,9 +1,13 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileAudio, FileSpreadsheet, ClipboardPaste, UploadCloud, FolderOpen, Link2, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button, Card, Tabs, cn } from "./ui";
 import { AUDIO_EXT } from "@/lib/audio";
-import { addAudioFiles, addParsedTracks } from "@/lib/pipeline";
+import { addAudioFiles, addParsedTracks, importStoreTracks, storeTitle } from "@/lib/pipeline";
+import { makeBookmarklet } from "@/lib/store-import/bookmarklet";
+import { parseStorePayload, type StorePayload } from "@/lib/store-import/parse";
+import { useStore } from "@/lib/store";
+import { matchScore } from "@/lib/match";
 import { parseListFile, type ParsedInput } from "@/lib/parsers/files";
 import { parseText, parseTextTable, mapRows, FIELD_LABELS, type ParsedTrack, type TableInfo, type Field } from "@/lib/parsers/text";
 import { extractUrls, resolveLinks, resultsToParsed } from "@/lib/links/client";
@@ -27,7 +31,7 @@ https://www.youtube.com/watch?v=...`;
 
 const PLATFORM_CHIPS = ["Spotify", "Deezer", "Apple Music", "YouTube", "YouTube Music", "SoundCloud", "Beatport*", "Tidal*", "Bandcamp*", "Shazam*"];
 
-interface Preview { tracks: ParsedTrack[]; table?: TableInfo; links?: ResolveResult[] }
+interface Preview { tracks: ParsedTrack[]; table?: TableInfo; links?: ResolveResult[]; store?: StorePayload }
 
 export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   const [mode, setMode] = useState<Mode>("audio");
@@ -39,6 +43,21 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   const audioRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLInputElement>(null);
+
+  // dados enviados pelo botão "Enviar para o MixKey" (#mk-store=…)
+  useEffect(() => {
+    const read = () => {
+      const m = /#mk-store=([^&]+)/.exec(location.hash);
+      if (!m) return;
+      const p = parseStorePayload(m[1]);
+      history.replaceState(null, "", location.pathname + location.search);
+      if (p) { setMode("links"); setPreview({ tracks: [], store: p }); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      else notify("Não consegui ler os dados enviados.");
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, [notify]);
 
   // faixas exibidas: se houver tabela, recalcula a partir do mapeamento escolhido
   const tracks = useMemo(() => (preview?.table ? mapRows(preview.table) : preview?.tracks ?? []), [preview]);
@@ -75,6 +94,8 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   }
 
   function readPaste() {
+    const sp = parseStorePayload(text);
+    if (sp) return setPreview({ tracks: [], store: sp });
     // texto colado só com links → trata como links
     const lines = text.split("\n").filter((l) => l.trim());
     const urls = extractUrls(text);
@@ -86,6 +107,12 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
   }
 
   function confirmPreview() {
+    if (preview?.store) {
+      const r = importStoreTracks(preview.store);
+      notify(`${preview.store.store}: ${r.merged} faixa(s) atualizada(s) na biblioteca${r.added ? `, ${r.added} nova(s)` : ""}`);
+      setPreview(null);
+      return;
+    }
     if (!tracks.length) return;
     const r = addParsedTracks(tracks);
     notify(`${r.added} faixa(s) adicionadas${r.skipped ? ` · ${r.skipped} duplicada(s) ignorada(s)` : ""}`);
@@ -171,6 +198,7 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
             {PLATFORM_CHIPS.map((p) => <span key={p} className="text-[11px] rounded-full border border-line px-2 py-0.5 text-muted">{p}</span>)}
           </div>
           <p className="text-xs text-muted mt-1.5">Faixas, álbuns e playlists de Spotify, Deezer, Apple Music, YouTube e YouTube Music; faixas do SoundCloud. * Leitura parcial (o site limita): confira o artista. Amazon Music não expõe os dados — cole o nome.</p>
+          <StoreButton />
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <Button variant="primary" disabled={!linkText.trim() || !!resolving} onClick={() => readLinks(linkText)}>
               {resolving ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} Ler links
@@ -184,7 +212,8 @@ export default function AddTracks({ notify }: { notify: (m: string) => void }) {
       <input ref={dirRef} type="file" multiple className="hidden" {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
       <input ref={listRef} type="file" multiple accept=".txt,.csv,.tsv,.xlsx,.xlsm,.xls,.ods,.m3u,.m3u8,.xml,.json" className="hidden" onChange={(e) => { e.target.files && handleFiles(e.target.files); e.target.value = ""; }} />
 
-      {preview && (
+      {preview?.store && <StorePreview p={preview.store} onCancel={() => setPreview(null)} onConfirm={confirmPreview} />}
+      {preview && !preview.store && (
         <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="font-medium">{tracks.length} faixa(s) reconhecida(s) — confira antes de adicionar</div>
@@ -275,6 +304,73 @@ function ColumnMapper({ table, onField, onHeader }: { table: TableInfo; onField:
                 {table.fields.map((_, ci) => (
                   <td key={ci} className="pr-2 py-0.5 max-w-[12rem] truncate">{String(r[ci] ?? "")}</td>
                 ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** Botão para arrastar para a barra de favoritos */
+function StoreButton() {
+  const ref = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    // o React bloqueia "javascript:" em href; define direto no elemento
+    ref.current?.setAttribute("href", makeBookmarklet(window.location.origin));
+  }, []);
+  return (
+    <div className="mt-4 rounded-xl border border-line bg-panel p-3">
+      <div className="text-sm font-medium">Dados oficiais do Beatport (1 clique)</div>
+      <p className="text-xs text-muted mt-1">
+        O Beatport bloqueia leitura automática, mas você pode trazer os dados da página que estiver vendo: BPM, key, gênero, selo, ISRC e capa.
+        Faixas que já estão na biblioteca ganham esses dados como mais uma fonte na votação; as demais são adicionadas.
+      </p>
+      <ol className="text-xs text-muted list-decimal pl-4 mt-2 space-y-0.5">
+        <li><b>Arraste</b> o botão abaixo para a barra de favoritos do navegador (no Chrome: Ctrl+Shift+B mostra a barra).</li>
+        <li>Abra no Beatport uma página de faixa, release, chart, playlist ou busca.</li>
+        <li>Clique no favorito <b>“→ MixKey”</b>: o MixKey abre com as faixas da página para você confirmar.</li>
+      </ol>
+      <a ref={ref} onClick={(e) => e.preventDefault()} draggable
+        className="mt-3 inline-flex items-center gap-2 rounded-xl grad-bg text-white text-sm font-semibold px-4 h-9 cursor-grab active:cursor-grabbing select-none"
+        title="Arraste para a barra de favoritos">
+        → MixKey
+      </a>
+      <span className="text-[11px] text-muted ml-2">arraste, não clique</span>
+    </div>
+  );
+}
+
+function StorePreview({ p, onCancel, onConfirm }: { p: StorePayload; onCancel: () => void; onConfirm: () => void }) {
+  const lib = useStore((s) => s.tracks);
+  const inLib = (t: StorePayload["tracks"][number]) => lib.some((x) => (t.isrc && x.isrc === t.isrc) || matchScore(x, { title: storeTitle(t), artist: t.artists }) >= 0.85);
+  const n = p.tracks.filter(inLib).length;
+  return (
+    <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <div className="font-medium">{p.store}: {p.tracks.length} faixa(s) — {p.page?.replace(/\s*\|.*$/, "")}</div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+          <Button variant="primary" size="sm" onClick={onConfirm}>Importar dados</Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted mb-3">{n} já está(ão) na biblioteca e vão ganhar os dados do {p.store} como fonte oficial; {p.tracks.length - n} serão adicionadas.</p>
+      <div className="max-h-72 overflow-auto scroll-thin text-sm">
+        <table className="w-full">
+          <thead className="text-xs text-muted text-left sticky top-0 bg-panel">
+            <tr><th className="py-1 pr-2 w-10" /><th className="pr-2">Título</th><th className="pr-2">Artista</th><th className="pr-2">Key</th><th className="pr-2">BPM</th><th className="pr-2">Gênero</th><th>Selo</th></tr>
+          </thead>
+          <tbody>
+            {p.tracks.map((t, i) => (
+              <tr key={i} className="border-t border-line/60">
+                <td className="py-1 pr-2"><Cover src={t.coverUrl} size={28} className="rounded" /></td>
+                <td className="pr-2">{storeTitle(t)} {inLib(t) && <span className="text-[10px] text-emerald-400 border border-emerald-500/40 rounded px-1 ml-1">na biblioteca</span>}</td>
+                <td className="pr-2 text-muted">{t.artists}</td>
+                <td className="pr-2"><span className="text-xs">{t.key ?? "—"}</span></td>
+                <td className="pr-2 tabular-nums">{t.bpm ?? "—"}</td>
+                <td className="pr-2 text-xs text-muted">{t.genre ?? ""}</td>
+                <td className="text-xs text-muted">{t.label ?? ""}</td>
               </tr>
             ))}
           </tbody>

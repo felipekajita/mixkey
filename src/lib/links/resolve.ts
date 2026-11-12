@@ -213,7 +213,7 @@ async function beatport(url: string): Promise<Omit<ResolveResult, "url" | "platf
     const m = /beatport\.com\/track\/([^/]+)\/(\d+)/.exec(url);
     if (!m) throw new Error("O Beatport bloqueia leitura automática; cole o link de faixa ou digite o nome");
     const title = decodeURIComponent(m[1]).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    return { kind: "track", tracks: [{ title, artist: "", url }], warning: "O Beatport bloqueia leitura automática: título lido da URL, artista não informado — edite se precisar" };
+    return { kind: "track", tracks: [{ title, artist: "", url }], warning: "O Beatport bloqueia leitura automática: título lido da URL. Para BPM, key, artista e selo oficiais, abra o link e use o favorito “→ MixKey” (instruções logo acima)" };
   }
 }
 

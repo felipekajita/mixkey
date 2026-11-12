@@ -69,3 +69,25 @@ describe("ReccoBeats sem chave do Spotify", () => {
     expect(r?.matchedTitle).toBe("Blinding Lights");
   });
 });
+
+describe("loja oficial vs. prévias", () => {
+  it("Beatport vence 3 prévias concordando entre si", () => {
+    const c = computeConsensus([
+      { source: "store-beatport", label: "Beatport", key: "10A", bpm: 126 },
+      { source: "essentia-preview-deezer", label: "D", key: "11B", bpm: 126 },
+      { source: "essentia-preview-apple", label: "A", key: "11B", bpm: 126 },
+      { source: "essentia-preview-spotify", label: "S", key: "11B", bpm: 126 },
+    ]);
+    expect(c.key).toBe("10A");
+    expect(c.bpm).toBe(126);
+  });
+  it("prévias + ReccoBeats concordando superam a loja", () => {
+    const c = computeConsensus([
+      { source: "store-beatport", label: "Beatport", key: "10A" },
+      { source: "reccobeats", label: "R", key: "11B" },
+      { source: "essentia-preview-deezer", label: "D", key: "11B" },
+      { source: "essentia-preview-apple", label: "A", key: "11B" },
+    ]);
+    expect(c.key).toBe("11B");
+  });
+});
