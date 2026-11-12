@@ -53,6 +53,10 @@ Para faixas que só existem online, como no YouTube, abra os detalhes da faixa e
 
 O áudio não é gravado nem enviado: a análise acontece no seu navegador, e as amostras são descartadas logo em seguida.
 
+## Prévias
+
+Passe o mouse sobre a capa de uma faixa (na biblioteca ou nas sugestões) e clique em ▶ para ouvir a prévia de 30 s. Enquanto ela toca, aparece um mini-player no rodapé com posição, **volume** (fica salvo no navegador) e mudo (tecla **M**).
+
 ## Biblioteca do Mixxx
 
 Na aba **Lista**, envie o arquivo `mixxxdb.sqlite` do Mixxx:

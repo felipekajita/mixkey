@@ -346,7 +346,7 @@ function StoreButton() {
       </p>
       <ol className="text-xs text-muted list-decimal pl-4 mt-2 space-y-0.5">
         <li><b>Arraste</b> o botão abaixo para a barra de favoritos do navegador (no Chrome: Ctrl+Shift+B mostra a barra).</li>
-        <li>Abra no Beatport uma página de faixa, release, chart, playlist ou busca.</li>
+        <li>Abra no <a className="underline" href="https://www.beatport.com" target="_blank" rel="noreferrer">Beatport</a> uma página de faixa, release, chart, playlist ou busca. Nos detalhes de cada faixa da biblioteca há o botão <b>“Abrir no Beatport”</b>, que já busca a música certa.</li>
         <li>Clique no favorito <b>“→ MixKey”</b>: o MixKey abre com as faixas da página para você confirmar.</li>
       </ol>
       <a ref={ref} onClick={(e) => e.preventDefault()} draggable

@@ -10,6 +10,7 @@ import Builder from "./Builder";
 import Results from "./Results";
 import { Button, Modal, Toast, cn } from "./ui";
 import BackupModal from "./BackupModal";
+import PreviewBar from "./PreviewBar";
 
 interface SrcStatus { id: string; label: string; kind: string; provides: string[]; enabled: boolean }
 
@@ -143,6 +144,7 @@ export default function App() {
         </div>
       </Modal>
       <BackupModal open={backupOpen} onClose={() => setBackupOpen(false)} notify={notify} />
+      <PreviewBar />
       <Toast msg={toast} />
     </div>
   );

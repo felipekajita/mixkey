@@ -75,11 +75,18 @@ function conf(share: number, weight: number): Confidence {
 }
 
 const enc = encodeURIComponent;
+
+/** Página da faixa no Beatport (se já veio de lá) ou a busca por título + artista */
+export function beatportUrl(t: { title: string; artist: string; readings?: SourceReading[] }) {
+  const exact = t.readings?.find((r) => r.source === "store-beatport" && r.url)?.url;
+  return exact ?? `https://www.beatport.com/search/tracks?q=${encodeURIComponent(`${t.title} ${t.artist}`.trim())}`;
+}
 /** Links de verificação manual em todos os sites/plataformas */
 export function verifyLinks(t: { title: string; artist: string }) {
   const q = `${t.artist} ${t.title}`.trim();
   return {
     keybpm: [
+      { label: "Beatport", url: beatportUrl(t) },
       { label: "VocalRemover", url: "https://vocalremover.org/key-bpm-finder" },
       { label: "Ghost Production", url: "https://theghostproduction.com/bpm-and-key-finder/" },
       { label: "LANDR", url: "https://samples.landr.com/key-bpm-finder" },

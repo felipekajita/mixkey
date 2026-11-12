@@ -9,7 +9,7 @@ import { Cover, KeyBadge, ConfDot, EnergyBar } from "./bits";
 import { formatDuration, normalizeBpm } from "@/lib/bpm";
 import { ALL_CAMELOT, camelotToMusical, camelotToOpenKey } from "@/lib/camelot";
 import { reprocess, resetManual } from "@/lib/pipeline";
-import { usable, verifyLinks, computeConsensus } from "@/lib/consensus";
+import { usable, verifyLinks, computeConsensus, beatportUrl } from "@/lib/consensus";
 import { usePreview } from "./usePreview";
 
 type SortKey = "added" | "key" | "bpm" | "energy" | "artist";
@@ -72,7 +72,7 @@ export default function TrackTable() {
             <div className="relative">
               <Cover src={t.coverUrl} size={44} />
               {t.previewUrl && (
-                <button onClick={(e) => { e.stopPropagation(); toggle(t.previewUrl!); }} className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition text-white" aria-label="Ouvir prévia">
+                <button onClick={(e) => { e.stopPropagation(); toggle(t.previewUrl!, { title: t.title, artist: t.artist, coverUrl: t.coverUrl }); }} className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition text-white" aria-label="Ouvir prévia">
                   {playing === t.previewUrl ? <Pause size={18} /> : <Play size={18} />}
                 </button>
               )}
@@ -145,7 +145,11 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => reprocess(t.id)}><RefreshCw size={14} /> Buscar novamente</Button>
               <Button size="sm" variant="primary" onClick={() => setListen(true)}><Headphones size={14} /> Ouvir e analisar</Button>
+              <a href={beatportUrl(t)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-sm font-medium border border-line bg-panel2 hover:bg-line/70">
+                <ExternalLink size={14} /> Abrir no Beatport
+              </a>
             </div>
+            <div className="text-[11px] text-muted mt-1">No Beatport, clique no favorito <b>→ MixKey</b> para trazer BPM, key, gênero e selo oficiais (instruções na aba Links).</div>
             <div className="text-[11px] text-muted mt-1">Busca tudo de novo (ignora o cache) e descarta suas edições manuais de key, BPM e energia.</div>
           </div>
         </div>

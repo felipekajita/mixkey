@@ -97,7 +97,7 @@ export default function Suggestions({ notify }: { notify: (m: string) => void })
                 <div className="relative">
                   <Cover src={s.coverUrl} size={52} />
                   {s.previewUrl && (
-                    <button onClick={() => toggle(s.previewUrl!)} className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 text-white">
+                    <button onClick={() => toggle(s.previewUrl!, { title: s.title, artist: s.artist, coverUrl: s.coverUrl })} className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 text-white">
                       {playing === s.previewUrl ? <Pause size={18} /> : <Play size={18} />}
                     </button>
                   )}
