@@ -122,7 +122,7 @@ export default function App() {
       <footer className="border-t border-line text-xs text-muted">
         <div className="max-w-7xl mx-auto px-4 py-5 flex flex-wrap gap-x-4 gap-y-1 justify-between">
           <span>MixKey · análise de áudio local com <a className="underline" href="https://mtg.github.io/essentia.js/" target="_blank" rel="noreferrer">Essentia.js</a> (AGPL-3.0) · <a className="underline" href={process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com"} target="_blank" rel="noreferrer">código-fonte</a></span>
-          <span>Dados de BPM/key: <a className="underline" href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>, ReccoBeats, Deezer, MusicBrainz</span>
+          <span>Dados de BPM/key: ReccoBeats, Deezer, MusicBrainz</span>
         </div>
       </footer>
 

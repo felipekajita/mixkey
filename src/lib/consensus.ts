@@ -3,9 +3,9 @@ import { normalizeBpm } from "./bpm";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
-  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, beatport: 2.5, getsongbpm: 2, tunebat: 2, getsongkey: 2, "essentia-preview": 1.8, deezer: 1,
+  list: 4, tags: 3, essentia: 3, reccobeats: 2.5, beatport: 2.5, tunebat: 2, getsongkey: 2, "essentia-preview": 1.8, deezer: 1,
 };
-const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "beatport", "tunebat", "ytmusic", "lastfm", "getsongbpm", "musicbrainz", "google"];
+const COVER_ORDER = ["tags", "deezer", "spotify", "itunes", "beatport", "tunebat", "ytmusic", "lastfm", "musicbrainz", "google"];
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 

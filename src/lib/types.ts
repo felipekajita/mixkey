@@ -1,7 +1,7 @@
 export type Camelot = string; // "8A", "11B" ...
 
 export interface SourceReading {
-  source: string;          // id da fonte (ex: "essentia", "getsongbpm", "tags")
+  source: string;          // id da fonte (ex: "essentia", "reccobeats", "tags")
   label: string;           // nome amigável
   key?: Camelot;
   bpm?: number;

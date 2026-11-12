@@ -4,7 +4,6 @@ import { deezer } from "./deezer";
 import { itunes } from "./itunes";
 import { musicbrainz } from "./musicbrainz";
 import { spotify } from "./spotify";
-import { getsongbpm } from "./getsongbpm";
 import { lastfm } from "./lastfm";
 import { reccobeats } from "./reccobeats";
 import { googleImages } from "./google";
@@ -20,7 +19,7 @@ export interface SourceDef {
   coverOnly?: boolean;
 }
 
-export const SOURCES: SourceDef[] = [deezer, spotify, reccobeats, itunes, musicbrainz, getsongbpm, lastfm, beatport, tunebat, getsongkey, youtubeMusic, googleImages];
+export const SOURCES: SourceDef[] = [deezer, spotify, reccobeats, itunes, musicbrainz, lastfm, beatport, tunebat, getsongkey, youtubeMusic, googleImages];
 
 /** Escolhe o melhor candidato pelo nome */
 export function pickBest<T>(want: LookupQuery, items: T[], get: (x: T) => { title: string; artist: string; durationSec?: number }) {

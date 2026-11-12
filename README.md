@@ -6,7 +6,7 @@ Envie **arquivos de áudio**, uma **lista/planilha** ou **cole um texto** com fa
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
    - pela **análise do áudio no navegador** (Essentia.js — os arquivos nunca saem do seu computador);
    - pela **análise da prévia de 30 s** (Deezer) das faixas que vieram de uma lista;
-   - por **cruzamento com plataformas**: ReccoBeats (via Spotify), GetSongBPM/GetSongKey, Beatport, Tunebat, Deezer…
+   - por **cruzamento com plataformas**: ReccoBeats (via Spotify), GetSongKey, Beatport, Tunebat, Deezer…
    - O resultado final é decidido por **votação**. Cada valor vem com um indicador de confiança (🟢🟡🔴) e a lista "fonte → valor".
 2. Busca as **capas** (tags, Deezer, Spotify, Apple Music, Beatport, Tunebat, YouTube Music, Last.fm, MusicBrainz e Google Imagens). Um resultado só é aceito quando o **nome confere** (título + artista; remix ≠ original).
 3. Sugere **várias sequências** (Set A/B/C) que respeitam a roda Camelot, a tolerância de pitch e a **curva de energia** da vibe escolhida:
@@ -42,7 +42,6 @@ npm test                     # testes unitários
 | YouTube Music (site) | — | capa |
 | Spotify | `SPOTIFY_CLIENT_ID/SECRET` | capa, ISRC, **habilita a ReccoBeats** |
 | ReccoBeats | (usa o Spotify) | **key, BPM, energia** |
-| GetSongBPM / GetSongKey | `GETSONGBPM_API_KEY` | key, BPM |
 | Last.fm | `LASTFM_API_KEY` | faixas similares, gêneros |
 | Google Imagens | `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX` | capa (último recurso) |
 | Tunebat, GetSongKey (site), Beatport | — (scraping) | key, BPM, capa — *ver observação* |
