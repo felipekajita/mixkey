@@ -101,7 +101,6 @@ export default function App() {
               <div className="text-center py-6 sm:py-10">
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight">Monte sets que <span className="grad-text">fluem</span>.</h1>
                 <p className="text-muted mt-3 max-w-2xl mx-auto">Envie músicas ou uma lista. O MixKey identifica <b>key (Camelot)</b> e <b>BPM</b>, cruza com Deezer, Spotify, Apple Music, Beatport, Tunebat e outras plataformas, busca as capas e sugere a melhor ordem para mixar, conforme a vibe que você quer.</p>
-                <p className="text-xs text-muted mt-3">Dados de BPM/key: <a className="underline text-accent" href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM (getsongbpm.com)</a></p>
               </div>
             )}
             <AddTracks notify={notify} />
@@ -121,15 +120,9 @@ export default function App() {
       </main>
 
       <footer className="border-t border-line text-xs text-muted">
-        <div className="max-w-7xl mx-auto px-4 pt-5">
-          <div className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-fg text-center">
-            Dados de BPM e key fornecidos por <b>GetSongBPM</b> —{" "}
-            <a className="underline font-semibold text-accent break-all" href="https://getsongbpm.com" target="_blank" rel="noopener">https://getsongbpm.com</a>
-          </div>
-        </div>
         <div className="max-w-7xl mx-auto px-4 py-5 flex flex-wrap gap-x-4 gap-y-1 justify-between">
           <span>MixKey · análise de áudio local com <a className="underline" href="https://mtg.github.io/essentia.js/" target="_blank" rel="noreferrer">Essentia.js</a> (AGPL-3.0) · <a className="underline" href={process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com"} target="_blank" rel="noreferrer">código-fonte</a></span>
-          <span>Dados de BPM/key: <a className="underline" href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM</a>, ReccoBeats, Deezer, MusicBrainz</span>
+          <span>Dados de BPM/key: <a className="underline" href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>, ReccoBeats, Deezer, MusicBrainz</span>
         </div>
       </footer>
 
@@ -140,7 +133,7 @@ export default function App() {
           <div className="flex items-center justify-between py-2"><span>Tags do arquivo (TKEY/TBPM/capa)</span><span className="text-emerald-400">ativa</span></div>
           {sources.map((s) => (
             <div key={s.id} className="flex items-center justify-between py-2 gap-2">
-              <span>{s.id === "getsongbpm" ? <a className="underline" href="https://getsongbpm.com" target="_blank" rel="noopener">{s.label}</a> : s.label} <span className="text-xs text-muted">· {s.kind === "scrape" ? "site" : "API"} · {s.provides.join(", ")}</span></span>
+              <span>{s.label} <span className="text-xs text-muted">· {s.kind === "scrape" ? "site" : "API"} · {s.provides.join(", ")}</span></span>
               <span className={s.enabled ? "text-emerald-400" : "text-muted"}>{s.enabled ? "ativa" : "sem chave"}</span>
             </div>
           ))}
