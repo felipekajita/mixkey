@@ -1,7 +1,5 @@
 # MixKey 🎛️ — sets harmônicos (Camelot + BPM) para Rekordbox
 
-> Dados de BPM/key: [GetSongBPM](https://getsongbpm.com) · ReccoBeats · Deezer · MusicBrainz
-
 Envie **arquivos de áudio**, uma **lista/planilha** ou **cole um texto** com faixas. O MixKey:
 
 1. Identifica **key (Camelot)** e **BPM** de cada faixa:
@@ -62,12 +60,6 @@ Na tela **Sequências → Exportar**, informe a pasta onde estão suas músicas 
 - **Áudio:** MP3, WAV, FLAC, AIFF, M4A/AAC, OGG, OPUS (o navegador precisa conseguir decodificar o formato; o Safari não decodifica OGG, por exemplo).
 - **Listas:** TXT, CSV, TSV, XLSX/XLS/ODS, M3U/M3U8, XML do Rekordbox, JSON e texto colado. O cabeçalho pode estar em português ou inglês; sem cabeçalho, as colunas são detectadas pelo conteúdo.
 - **Notação de key:** `8A`, `Am`, `A minor`, `Lá menor`, `A♭m`, `G#m`, Open Key `1m`/`1d`.
-
-## Créditos
-
-- Dados de BPM e key fornecidos por [GetSongBPM](https://getsongbpm.com).
-- Análise de áudio: [Essentia.js](https://mtg.github.io/essentia.js/).
-- Metadados e capas: Deezer, MusicBrainz / Cover Art Archive, Apple Music, Spotify, ReccoBeats, Last.fm.
 
 ## Licença
 
