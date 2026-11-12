@@ -3,12 +3,12 @@ import { resolveBpm } from "./bpmOctave";
 import { MATCH_THRESHOLD } from "./match";
 
 const KEY_W: Record<string, number> = {
-  list: 4, tags: 3, mixxx: 3, essentia: 3, "essentia-listen-tab": 3, "essentia-listen-mic": 2, reccobeats: 2.5, songbpm: 1.5, "essentia-preview": 1.8, deezer: 1,
+  list: 4, tags: 3, mixxx: 3, essentia: 3, okscan: 3, "essentia-listen-tab": 3, "essentia-listen-mic": 2, "okscan-listen-tab": 3, "okscan-listen-mic": 2, reccobeats: 2.5, songbpm: 1.5, "essentia-preview": 1.8, deezer: 1,
 };
 const COVER_ORDER = ["tags", "store-beatport", "link", "deezer", "spotify", "itunes", "ytmusic", "lastfm", "musicbrainz"];
 
 // lojas (Beatport…): referência da indústria para DJs → peso alto
-const weight = (source: string) => KEY_W[source] ?? (source.startsWith("store-") ? 3.5 : source.startsWith("essentia-preview") ? 1.8 : 1.5);
+const weight = (source: string) => KEY_W[source] ?? (source.startsWith("store-") ? 3.5 : source.startsWith("essentia-preview") || source.startsWith("okscan-preview") ? 1.8 : 1.5);
 
 export const usable = (r: SourceReading) => !r.error && (r.matchScore == null || r.matchScore >= MATCH_THRESHOLD);
 
@@ -16,10 +16,11 @@ export function computeConsensus(readings: SourceReading[], extraGenres: string[
   const ok = readings.filter(usable);
   const out: Partial<Track> = {};
   // as prévias usam o mesmo detector: juntas valem no máximo 3 (uma opinião forte, não três)
-  const nPrev = ok.filter((r) => r.source.startsWith("essentia-preview")).length;
-  const prevScale = nPrev ? Math.min(1, 3 / (1.8 * nPrev)) : 1;
+  // vale para cada família de detector (Essentia e IA) separadamente
+  const capScale = (prefix: string) => { const n = ok.filter((r) => r.source.startsWith(prefix)).length; return n ? Math.min(1, 3 / (1.8 * n)) : 1; };
+  const prevScale = capScale("essentia-preview"), mlPrevScale = capScale("okscan-preview");
   const extra = new Map(ok.map((r) => [r.source, r.weight ?? 1]));
-  const w = (src: string) => weight(src) * (src.startsWith("essentia-preview") ? prevScale : 1) * (extra.get(src) ?? 1);
+  const w = (src: string) => weight(src) * (src.startsWith("essentia-preview") ? prevScale : src.startsWith("okscan-preview") ? mlPrevScale : 1) * (extra.get(src) ?? 1);
 
   // KEY
   const kv = new Map<string, number>();

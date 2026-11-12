@@ -4,6 +4,7 @@ Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **col
 
 1. Identifica **key (Camelot)** e **BPM** de cada faixa:
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
+   - pela **IA de key [OpenKeyScan](https://github.com/rekordcloud/openkeyscan-analyzer)** (rede neural treinada com música eletrônica, rodando no navegador), como segunda opinião independente;
    - pela **análise do áudio no navegador** (Essentia.js, os arquivos nunca saem do seu computador), na **faixa inteira**: 3 trechos (início, meio e fim) analisados e comparados;
    - pela **análise de até 3 prévias de 30 s de plataformas diferentes** (Deezer, Apple Music, Spotify) das faixas que vieram de lista ou link;
    - pela **ReccoBeats** (sem chave), encontrada pelo ID do Spotify do link, pelo **ISRC** (código único da gravação, vindo do Deezer, MusicBrainz ou Spotify) ou por busca de nome;
@@ -135,6 +136,14 @@ Detectores às vezes leem metade ou o dobro do BPM real (ex.: 85 em vez de 171).
 - **Áudio:** MP3, WAV, FLAC, AIFF, M4A/AAC, OGG, OPUS (o navegador precisa conseguir decodificar o formato; o Safari não decodifica OGG, por exemplo).
 - **Listas:** TXT, CSV, TSV, XLSX/XLS/ODS, M3U/M3U8, XML do Rekordbox, JSON e texto colado. O cabeçalho pode estar em português ou inglês; sem cabeçalho, as colunas são detectadas pelo conteúdo.
 - **Notação de key:** `8A`, `Am`, `A minor`, `Lá menor`, `A♭m`, `G#m`, Open Key `1m`/`1d`.
+
+## Créditos
+
+- [Essentia.js](https://mtg.github.io/essentia.js/) (AGPL-3.0): análise de key/BPM.
+- [OpenKeyScan](https://github.com/rekordcloud/openkeyscan-analyzer) (MIT, © 2025 Alexander Sommer), baseado no [MusicalKeyCNN](https://github.com/a1ex90/MusicalKeyCNN): o modelo `openkeyscan3` foi convertido para ONNX (float16) e roda no navegador com [onnxruntime-web](https://onnxruntime.ai/). O espectrograma CQT foi reescrito em TypeScript e verificado contra o `librosa`. A licença está em `public/models/OPENKEYSCAN-LICENSE.txt`.
+- [Mixxx](https://github.com/mixxxdj/mixxx): formato da biblioteca (`mixxxdb.sqlite`) e da key (`keys.proto`), usados para importar a biblioteca. Nenhum código do Mixxx foi incorporado.
+- [sql.js](https://github.com/sql-js/sql.js) (MIT): leitura do SQLite no navegador.
+- Dados: ReccoBeats, SongBPM, Deezer, MusicBrainz/Cover Art Archive, Apple Music, Spotify, Last.fm.
 
 ## Licença
 

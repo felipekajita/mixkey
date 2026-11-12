@@ -84,7 +84,7 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
 export function reprocess(id: string) {
   useStore.getState().updateTrack(id, (t) => ({
     status: "pending", manualKey: false, manualBpm: false, manualEnergy: false,
-    readings: t.readings.filter((r) => ["list", "tags", "essentia", "link", "mixxx"].includes(r.source) || r.source.startsWith("store-") || r.source.startsWith("essentia-listen")),
+    readings: t.readings.filter((r) => ["list", "tags", "essentia", "okscan", "link", "mixxx"].includes(r.source) || r.source.startsWith("store-") || r.source.startsWith("essentia-listen") || r.source.startsWith("okscan-listen")),
   }));
   enqueue(() => processTrack(id, true));
 }
@@ -143,7 +143,7 @@ async function processTrack(id: string, force = false) {
       try {
         const a = await analyzeAudio(await file.arrayBuffer());
         const segNote = a.segments && a.segments > 1 ? `faixa inteira em ${a.segments} trechos; key igual em ${a.keyAgree}/${a.segments}` : undefined;
-        addReadings(id, [{ source: "essentia", label: "Análise do áudio (MixKey)", key: a.key, bpm: a.bpm, note: segNote }]);
+        addReadings(id, [{ source: "essentia", label: "Análise do áudio (MixKey)", key: a.key, bpm: a.bpm, note: segNote }, ...mlReading("okscan", "IA OpenKeyScan (arquivo)", a)]);
         upd(id, { loudness: a.loudness, danceability: a.danceability, durationSec: get(id)?.durationSec ?? a.durationSec });
       } catch (e) {
         addReadings(id, [{ source: "essentia", label: "Análise do áudio", error: `Formato não decodificável no navegador (${(e as Error).message})` }]);
@@ -158,7 +158,7 @@ async function processTrack(id: string, force = false) {
       upd(id, { status: "looking-up", statusText: "Usando dados já buscados…" });
       addReadings(id, cached.readings);
       if (cached.previews?.length && !files.has(id)) {
-        addReadings(id, cached.previews.map(previewReading));
+        addReadings(id, cached.previews.flatMap(previewReading));
         upd(id, { danceability: cached.previews.find((p) => p.danceability != null)?.danceability });
       }
     } else {
@@ -186,9 +186,9 @@ async function processTrack(id: string, force = false) {
         upd(id, { statusText: `Analisando prévia (${PREVIEW_LABEL[p.platform]})…` });
         try {
           const a = await analyzePreview(p.url);
-          const pa: PreviewAnalysis = { platform: p.platform, key: a.key, bpm: a.bpm, danceability: a.danceability };
+          const pa: PreviewAnalysis = { platform: p.platform, key: a.key, bpm: a.bpm, danceability: a.danceability, mlKey: a.mlKey, mlConf: a.mlConf };
           done.push(pa);
-          addReadings(id, [previewReading(pa)]);
+          addReadings(id, previewReading(pa));
           if (a.danceability != null) upd(id, { danceability: a.danceability });
         } catch (e) {
           addReadings(id, [{ source: `essentia-preview-${p.platform}`, label: `Prévia ${PREVIEW_LABEL[p.platform]} (30 s)`, error: (e as Error).message }]);
@@ -225,8 +225,18 @@ function previewCandidates(t: Track): { platform: string; url: string }[] {
   return ["deezer", "apple", "spotify", "outra"].filter((p) => by.has(p)).map((p) => ({ platform: p, url: by.get(p)! }));
 }
 
-function previewReading(p: PreviewAnalysis): SourceReading {
-  return { source: `essentia-preview-${p.platform}`, label: `Prévia ${PREVIEW_LABEL[p.platform] ?? p.platform} (30 s)`, key: p.key, bpm: p.bpm };
+function previewReading(p: PreviewAnalysis): SourceReading[] {
+  const label = PREVIEW_LABEL[p.platform] ?? p.platform;
+  return [
+    { source: `essentia-preview-${p.platform}`, label: `Prévia ${label} (30 s)`, key: p.key, bpm: p.bpm },
+    ...mlReading(`okscan-preview-${p.platform}`, `IA OpenKeyScan (prévia ${label})`, { mlKey: p.mlKey, mlConf: p.mlConf }),
+  ];
+}
+
+/** Leitura da IA de key (OpenKeyScan), quando ela rodou */
+function mlReading(source: string, label: string, a: { mlKey?: string; mlConf?: number }): SourceReading[] {
+  if (!a.mlKey) return [];
+  return [{ source, label, key: a.mlKey, note: `confiança ${Math.round((a.mlConf ?? 0) * 100)}%` }];
 }
 
 /** ID do Spotify, se a faixa veio de um link do Spotify (permite cruzar direto na ReccoBeats) */
@@ -290,12 +300,12 @@ export function importStoreTracks(p: StorePayload): { merged: number; added: num
 /** Resultado do "Ouvir e analisar" vira uma leitura da faixa */
 export function addListenReading(
   id: string,
-  a: { key?: string; bpm?: number; segments?: number; keyAgree?: number; durationSec?: number; danceability?: number; rate?: number; musicSec?: number },
+  a: { key?: string; bpm?: number; segments?: number; keyAgree?: number; durationSec?: number; danceability?: number; rate?: number; musicSec?: number; mlKey?: string; mlConf?: number },
   kind: "tab" | "mic",
 ) {
   const rate = a.rate ?? 1;
   const speed = rate !== 1 ? ` a ${String(rate).replace(".", ",")}×` : "";
-  addReadings(id, [{
+  addReadings(id, [...mlReading(`okscan-listen-${kind}`, `IA OpenKeyScan (escuta ${kind === "tab" ? "aba" : "microfone"})`, a as { mlKey?: string; mlConf?: number }), {
     source: `essentia-listen-${kind}`,
     label: `Escuta ao vivo (${kind === "tab" ? "aba" : "microfone"})`,
     key: a.key, bpm: a.bpm,

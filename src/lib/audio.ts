@@ -1,6 +1,7 @@
 "use client";
 import { pcToCamelot, parseKey, NOTE_NAMES_SHARP } from "./camelot";
 import { normalizeBpm } from "./bpm";
+import { detectKeyML } from "./keyscan";
 
 export const AUDIO_EXT = /\.(mp3|wav|flac|aiff?|m4a|aac|ogg|oga|opus|wma|alac|mp4|webm)$/i;
 
@@ -19,7 +20,7 @@ function getWorker() {
   return worker;
 }
 
-export interface AnalysisResult { key?: string; keyStrength?: number; bpm?: number; bpmConf?: number; danceability?: number; loudness?: number; durationSec?: number; segments?: number; keyAgree?: number }
+export interface AnalysisResult { key?: string; keyStrength?: number; bpm?: number; bpmConf?: number; danceability?: number; loudness?: number; durationSec?: number; segments?: number; keyAgree?: number; mlKey?: string; mlConf?: number }
 
 const SR = 44100;
 
@@ -76,6 +77,8 @@ export async function analyzeAudio(buf: ArrayBuffer): Promise<AnalysisResult> {
  */
 export async function analyzeSamples(data: Float32Array, opts: { segSec?: number; positions?: number[] } = {}): Promise<AnalysisResult> {
   const duration = data.length / SR;
+  // IA de key (OpenKeyScan) sobre o áudio todo — independente do Essentia
+  const ml = await detectKeyML(data);
   const segLen = Math.min(data.length, (opts.segSec ?? 60) * SR);
   const positions = opts.positions ?? [0.15, 0.45, 0.75];
   const starts = duration <= 40 ? [0] : positions.map((f) => Math.max(0, Math.min(data.length - segLen, Math.round(data.length * f))));
@@ -104,6 +107,7 @@ export async function analyzeSamples(data: Float32Array, opts: { segSec?: number
     key, bpm, keyStrength: results[0]?.strength, bpmConf: results[0]?.bpmConf,
     danceability: dance.length ? dance.reduce((a: number, b: number) => a + b, 0) / dance.length : undefined,
     loudness: loud, durationSec: duration, segments: results.length, keyAgree,
+    mlKey: ml?.key, mlConf: ml?.conf,
   };
 }
 

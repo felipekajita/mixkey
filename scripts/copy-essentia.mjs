@@ -14,3 +14,10 @@ if (existsSync("node_modules/sql.js/dist/sql-wasm-browser.wasm")) {
   copyFileSync("node_modules/sql.js/dist/sql-wasm-browser.wasm", "public/sqljs/sql-wasm-browser.wasm");
   console.log("sql.js copiado para public/sqljs");
 }
+
+// onnxruntime-web (IA OpenKeyScan) — arquivos WASM servidos em /ort/
+if (existsSync("node_modules/onnxruntime-web/dist/")) {
+  mkdirSync("public/ort/", { recursive: true });
+  for (const f of ["ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.mjs"]) copyFileSync("node_modules/onnxruntime-web/dist/" + f, "public/ort/" + f);
+  console.log("onnxruntime-web copiado para public/ort");
+}

@@ -7,3 +7,4 @@ public/essentia
 next-env.d.ts
 .vercel
 public/sqljs
+public/ort
