@@ -6,6 +6,7 @@ import { analyzeAudio, analyzePreview, readTags } from "./audio";
 import { splitArtistTitle, type ParsedTrack } from "./parsers/text";
 import { estimateEnergy } from "./energy";
 import { normalizeName, cleanTitle, splitVersion } from "./match";
+import { getCached, putCached } from "./lookupCache";
 
 // Arquivos locais ficam só em memória (não podem ser persistidos)
 const files = new Map<string, File>();
@@ -75,8 +76,8 @@ export function addParsedTracks(list: ParsedTrack[], origin: Track["origin"] = "
 }
 
 export function reprocess(id: string) {
-  useStore.getState().updateTrack(id, (t) => ({ status: "pending", readings: t.readings.filter((r) => ["list", "tags", "essentia"].includes(r.source)) }));
-  enqueue(() => processTrack(id));
+  useStore.getState().updateTrack(id, (t) => ({ status: "pending", readings: t.readings.filter((r) => ["list", "tags", "essentia", "link"].includes(r.source)) }));
+  enqueue(() => processTrack(id, true));
 }
 
 export function resumePending() {
@@ -112,7 +113,7 @@ function addReadings(id: string, rs: SourceReading[]) {
   upd(id, { readings: [...t.readings.filter((r) => !ids.has(r.source)), ...rs] });
 }
 
-async function processTrack(id: string) {
+async function processTrack(id: string, force = false) {
   let t = get(id);
   if (!t) return;
   try {
@@ -140,28 +141,41 @@ async function processTrack(id: string) {
       applyConsensus(id);
     }
 
-    // 2) fontes online
+    // 2) fontes online (ou o cache do navegador, se a faixa já foi buscada)
     t = get(id)!;
-    upd(id, { status: "looking-up", statusText: "Buscando nas plataformas…" });
-    const r = await fetch("/api/lookup", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: t.title, artist: t.artist, version: t.version, durationSec: t.durationSec, isrc: t.isrc }),
-    });
-    if (r.ok) {
-      const { readings } = (await r.json()) as { readings: SourceReading[] };
-      addReadings(id, readings);
+    const cached = force ? null : await getCached(t);
+    if (cached) {
+      upd(id, { status: "looking-up", statusText: "Usando dados já buscados…" });
+      addReadings(id, cached.readings);
+      if (cached.preview && !files.has(id)) {
+        addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", key: cached.preview.key, bpm: cached.preview.bpm }]);
+        upd(id, { danceability: cached.preview.danceability });
+      }
+    } else {
+      upd(id, { status: "looking-up", statusText: "Buscando nas plataformas…" });
+      const r = await fetch("/api/lookup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: t.title, artist: t.artist, version: t.version, durationSec: t.durationSec, isrc: t.isrc }),
+      });
+      if (r.ok) {
+        const { readings } = (await r.json()) as { readings: SourceReading[] };
+        addReadings(id, readings);
+        await putCached(t, { readings, preview: undefined });
+      }
     }
     applyConsensus(id);
 
     // 3) sem arquivo e sem key/BPM confiável → analisa a prévia de 30 s
     t = get(id)!;
     const weak = (c: Track["keyConfidence"]) => c === "none" || c === "low";
-    if (!files.has(id) && t.previewUrl && (weak(t.keyConfidence) || weak(t.bpmConfidence))) {
+    const hasPreviewReading = t.readings.some((r) => r.source === "essentia-preview" && !r.error);
+    if (!files.has(id) && !hasPreviewReading && t.previewUrl && (weak(t.keyConfidence) || weak(t.bpmConfidence))) {
       upd(id, { statusText: "Analisando prévia de 30 s…" });
       try {
         const a = await analyzePreview(t.previewUrl);
         addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", key: a.key, bpm: a.bpm }]);
         upd(id, { danceability: a.danceability });
+        await putCached(t, { preview: { key: a.key, bpm: a.bpm, danceability: a.danceability } });
       } catch (e) {
         addReadings(id, [{ source: "essentia-preview", label: "Análise da prévia (30 s)", error: (e as Error).message }]);
       }

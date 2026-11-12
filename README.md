@@ -40,6 +40,10 @@ Ao importar CSV/XLSX ou colar células de planilha, o MixKey detecta sozinho o q
 
 A biblioteca e os sets ficam salvos no navegador. No botão **Backup** (no topo), baixe um `.json` com tudo: faixas analisadas, sets salvos e preferências. Para restaurar em outro navegador ou computador, use o mesmo botão; dá para **juntar** sem duplicar ou **substituir** tudo. Os arquivos de áudio não entram no backup.
 
+## Cache de buscas
+
+Os dados buscados nas plataformas e a análise das prévias de 30 s ficam guardados no navegador por 30 dias. Faixas repetidas, playlists reimportadas e backups restaurados aparecem na hora, sem consultar Deezer, Spotify, Apple Music etc. de novo. **Buscar novamente**, nos detalhes da faixa, ignora o cache. Para ver o tamanho do cache ou limpá-lo, use o botão **Backup**.
+
 ## Rodar localmente
 
 ```bash
