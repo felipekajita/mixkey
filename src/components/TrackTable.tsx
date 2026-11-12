@@ -8,7 +8,7 @@ import { Cover, KeyBadge, ConfDot, EnergyBar } from "./bits";
 import { formatDuration, normalizeBpm } from "@/lib/bpm";
 import { ALL_CAMELOT, camelotToMusical, camelotToOpenKey } from "@/lib/camelot";
 import { reprocess, resetManual } from "@/lib/pipeline";
-import { usable, verifyLinks } from "@/lib/consensus";
+import { usable, verifyLinks, computeConsensus } from "@/lib/consensus";
 import { usePreview } from "./usePreview";
 
 type SortKey = "added" | "key" | "bpm" | "energy" | "artist";
@@ -127,7 +127,7 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
             </label>
             <label className="text-xs text-muted">
               <span className="flex items-center gap-1.5">BPM {t.manualBpm && <EditedTag onReset={() => resetManual(t.id, ["bpm"])} />}</span>
-              <input key={`bpm-${t.bpm}`} type="number" step="0.1" className={cn(inputCls, "mt-1")} defaultValue={t.bpm} onBlur={(e) => { const v = parseFloat(e.target.value); if (v === t.bpm || (!v && !t.bpm)) return; const b = normalizeBpm(v); update(t.id, { bpm: b, manualBpm: true, bpmConfidence: b ? "high" : "none" }); }} />
+              <input key={`bpm-${t.bpm}`} type="number" step="1" className={cn(inputCls, "mt-1")} defaultValue={t.bpm} onBlur={(e) => { const v = parseFloat(e.target.value); if (v === t.bpm || (!v && !t.bpm)) return; const b = normalizeBpm(v); update(t.id, { bpm: b, manualBpm: true, bpmConfidence: b ? "high" : "none" }); }} />
             </label>
             <label className="text-xs text-muted">
               <span className="flex items-center gap-1.5">Energia (1–10) {t.manualEnergy && <EditedTag onReset={() => resetManual(t.id, ["energy"])} />}</span>
@@ -151,6 +151,7 @@ function TrackDetails({ t, onClose }: { t: Track; onClose: () => void }) {
         <b>Key e BPM</b> vêm da ReccoBeats, das análises de áudio (arquivo e prévias de 30 s de plataformas diferentes), das tags e da sua lista, e o valor final é decidido por votação.
         As demais plataformas confirmam que é a mesma faixa e trazem capa, duração, gênero e o <b>ISRC</b> (código único da gravação), usado para cruzar com a ReccoBeats.
       </p>
+      <Comparison t={t} />
       <div className="rounded-xl border border-line divide-y divide-line/70 text-sm">
         {t.readings.length === 0 && <div className="p-3 text-muted">Ainda sem dados.</div>}
         {[...t.readings].sort((a, b) => Number(!!(b.key || b.bpm)) - Number(!!(a.key || a.bpm))).map((r) => {
@@ -198,5 +199,47 @@ function EditedTag({ onReset }: { onReset: () => void }) {
       editado
       <button type="button" onClick={(e) => { e.preventDefault(); onReset(); }} title="Voltar ao valor automático" className="hover:text-fg">↺</button>
     </span>
+  );
+}
+
+/** Grupos de fontes para o comparativo */
+const GROUPS: { id: string; label: string; hint: string; match: (src: string) => boolean }[] = [
+  { id: "mine", label: "Análise do MixKey", hint: "áudio do arquivo e prévias de 30 s", match: (x) => x.startsWith("essentia") },
+  { id: "platforms", label: "Plataformas / serviços", hint: "ReccoBeats (dados do Spotify) e Deezer", match: (x) => x === "reccobeats" || x === "deezer" },
+  { id: "stores", label: "Lojas oficiais", hint: "Beatport e similares (importados)", match: (x) => x.startsWith("store") },
+  { id: "yours", label: "Seus dados", hint: "tags do arquivo (Rekordbox/Mixed In Key) e sua lista", match: (x) => x === "tags" || x === "list" },
+];
+
+function Comparison({ t }: { t: Track }) {
+  const rows = GROUPS.map((g) => {
+    const rs = t.readings.filter((r) => g.match(r.source) && (r.key || r.bpm) && usable(r));
+    const c = rs.length ? computeConsensus(rs, t.genres) : null;
+    return { g, n: rs.length, key: c?.key, bpm: c?.bpm };
+  }).filter((r) => r.n > 0);
+  if (!rows.length) return null;
+  const agreeKey = rows.filter((r) => r.key && r.key === t.key).length;
+  const agreeBpm = rows.filter((r) => r.bpm && t.bpm && Math.abs(r.bpm - t.bpm) <= 1).length;
+  return (
+    <div className="mb-3 rounded-xl border border-line overflow-hidden text-sm">
+      <table className="w-full">
+        <thead className="bg-panel2 text-xs text-muted">
+          <tr><th className="text-left px-3 py-1.5 font-medium">Comparativo</th><th className="text-left px-2 font-medium">Key</th><th className="text-left px-2 font-medium">BPM</th></tr>
+        </thead>
+        <tbody className="divide-y divide-line/70">
+          {rows.map((r) => (
+            <tr key={r.g.id}>
+              <td className="px-3 py-1.5"><div>{r.g.label} <span className="text-xs text-muted">({r.n})</span></div><div className="text-[11px] text-muted">{r.g.hint}</div></td>
+              <td className="px-2"><span className="inline-flex items-center gap-1"><KeyBadge k={r.key} size="sm" />{r.key && r.key !== t.key && <span className="text-[10px] text-amber-400">≠</span>}</span></td>
+              <td className="px-2 tabular-nums">{r.bpm ?? "—"}{r.bpm && t.bpm && Math.abs(r.bpm - t.bpm) > 1 && <span className="text-[10px] text-amber-400 ml-1">≠</span>}</td>
+            </tr>
+          ))}
+          <tr className="bg-accent/5 font-medium">
+            <td className="px-3 py-1.5">Resultado final <span className="text-xs text-muted font-normal">· key igual em {agreeKey}/{rows.length} grupos, BPM em {agreeBpm}/{rows.length}</span></td>
+            <td className="px-2"><KeyBadge k={t.key} size="sm" /></td>
+            <td className="px-2 tabular-nums">{t.bpm ?? "—"}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }

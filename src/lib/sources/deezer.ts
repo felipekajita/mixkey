@@ -31,7 +31,7 @@ export const deezer: SourceDef = {
       matchScore: best.score,
       matchedTitle: full.title_version && !full.title.includes(full.title_version) ? `${full.title} ${full.title_version}` : full.title,
       matchedArtist: (full.contributors?.map((c) => c.name).join(", ")) || full.artist.name,
-      bpm: full.bpm && full.bpm > 40 ? full.bpm : undefined,
+      bpm: full.bpm && full.bpm > 40 ? Math.round(full.bpm) : undefined,
       coverUrl: full.album?.cover_xl || full.album?.cover_big,
       url: full.link,
       durationSec: full.duration,

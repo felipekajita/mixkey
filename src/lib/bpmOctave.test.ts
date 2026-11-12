@@ -23,7 +23,7 @@ describe("resolveBpm (meio/dobro tempo)", () => {
     expect(resolveBpm([{ b: 180, w: 1.8 }], ["hip-hop"])!.bpm).toBe(90);
   });
   it("sem gênero mantém o valor lido", () => {
-    expect(resolveBpm([{ b: 85.4, w: 1.8 }])!.bpm).toBe(85.4);
+    expect(resolveBpm([{ b: 85.4, w: 1.8 }])!.bpm).toBe(85);
     expect(resolveBpm([{ b: 128, w: 3 }])!.bpm).toBe(128);
   });
   it("não mexe quando já está na faixa do gênero", () => {

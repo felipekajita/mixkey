@@ -137,7 +137,8 @@ async function processTrack(id: string, force = false) {
       upd(id, { statusText: "Analisando áudio (key/BPM)…" });
       try {
         const a = await analyzeAudio(await file.arrayBuffer());
-        addReadings(id, [{ source: "essentia", label: "Análise do áudio", key: a.key, bpm: a.bpm }]);
+        const segNote = a.segments && a.segments > 1 ? `faixa inteira em ${a.segments} trechos; key igual em ${a.keyAgree}/${a.segments}` : undefined;
+        addReadings(id, [{ source: "essentia", label: "Análise do áudio (MixKey)", key: a.key, bpm: a.bpm, note: segNote }]);
         upd(id, { loudness: a.loudness, danceability: a.danceability, durationSec: get(id)?.durationSec ?? a.durationSec });
       } catch (e) {
         addReadings(id, [{ source: "essentia", label: "Análise do áudio", error: `Formato não decodificável no navegador (${(e as Error).message})` }]);
@@ -201,7 +202,7 @@ async function processTrack(id: string, force = false) {
 }
 
 // ---------- prévias ----------
-const MAX_PREVIEWS = 2;
+const MAX_PREVIEWS = 3;
 const PREVIEW_LABEL: Record<string, string> = { deezer: "Deezer", apple: "Apple Music", spotify: "Spotify", outra: "streaming" };
 
 function previewPlatform(url: string): string {

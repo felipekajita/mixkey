@@ -4,8 +4,8 @@ Envie **arquivos de áudio**, uma **lista/planilha**, **cole um texto** ou **col
 
 1. Identifica **key (Camelot)** e **BPM** de cada faixa:
    - pelas **tags** do arquivo (TKEY/TBPM gravados pelo Rekordbox ou Mixed In Key);
-   - pela **análise do áudio no navegador** (Essentia.js — os arquivos nunca saem do seu computador);
-   - pela **análise de até 2 prévias de 30 s de plataformas diferentes** (Deezer, Apple Music, Spotify) das faixas que vieram de lista ou link;
+   - pela **análise do áudio no navegador** (Essentia.js, os arquivos nunca saem do seu computador), na **faixa inteira**: 3 trechos (início, meio e fim) analisados e comparados;
+   - pela **análise de até 3 prévias de 30 s de plataformas diferentes** (Deezer, Apple Music, Spotify) das faixas que vieram de lista ou link;
    - pela **ReccoBeats** (sem chave), encontrada pelo ID do Spotify do link, pelo **ISRC** (código único da gravação, vindo do Deezer, MusicBrainz ou Spotify) ou por busca de nome;
    - O resultado final é decidido por **votação**. Cada valor vem com um indicador de confiança (🟢🟡🔴) e a lista "fonte → valor".
 2. Busca as **capas** (tags, Deezer, Spotify, Apple Music, YouTube Music, Last.fm e MusicBrainz). Um resultado só é aceito quando o **nome confere** (título + artista; remix ≠ original).
@@ -92,7 +92,11 @@ Na tela **Sequências → Exportar**, informe a pasta onde estão suas músicas.
 
 Faixas que vieram de lista ou link (sem arquivo) recebem o nome presumido `Título - Artista.mp3`. Se o seu arquivo tiver outro nome, use **Relocate** no Rekordbox.
 
-## BPM em meio ou dobro tempo
+## BPM
+
+O BPM é sempre arredondado para o inteiro mais próximo.
+
+### Meio ou dobro tempo
 
 Detectores às vezes leem metade ou o dobro do BPM real (ex.: 85 em vez de 171). O MixKey trata leituras ×2/÷2 de fontes diferentes como a mesma e escolhe o valor pelos votos das fontes e pela faixa típica do gênero (house 110–132, techno 122–150, drum and bass 160–180, dubstep 135–155, hip hop 75–115…). Quando o BPM é corrigido, os detalhes da faixa mostram um aviso explicando o ajuste.
 

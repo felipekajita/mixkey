@@ -36,7 +36,7 @@ export function genreRange(genres: string[] = []): [number, number] | null {
 
 const OCT = [1, 2, 0.5];
 const near = (a: number, b: number, tol = 0.025) => Math.abs(a - b) / b <= tol;
-const round = (x: number) => (Math.abs(x - Math.round(x)) < 0.15 ? Math.round(x) : Math.round(x * 10) / 10);
+const round = (x: number) => Math.round(x); // BPM inteiro
 
 export interface BpmResult { bpm: number; groupWeight: number; totalWeight: number; note?: string }
 

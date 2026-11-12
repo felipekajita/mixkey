@@ -4,8 +4,8 @@ export function normalizeBpm(bpm?: number | null): number | undefined {
   let b = bpm;
   while (b < 70) b *= 2;
   while (b > 180) b /= 2;
-  // inteiro quando muito próximo; senão 1 casa decimal
-  return Math.abs(b - Math.round(b)) < 0.15 ? Math.round(b) : Math.round(b * 10) / 10;
+  // BPM com decimal é raríssimo em música produzida: arredonda para o inteiro mais próximo
+  return Math.round(b);
 }
 
 export interface BpmRelation {

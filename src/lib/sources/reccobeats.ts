@@ -75,7 +75,7 @@ export const reccobeats: SourceDef = {
     return {
       matchScore: hit.score, matchedTitle: hit.title, matchedArtist: hit.artist,
       key: f.key >= 0 ? pcToCamelot(f.key, f.mode === 0) : undefined,
-      bpm: f.tempo > 0 ? Math.round(f.tempo * 10) / 10 : undefined,
+      bpm: f.tempo > 0 ? Math.round(f.tempo) : undefined,
       energy: Math.round((1 + (f.energy * 0.7 + f.danceability * 0.3) * 9) * 10) / 10,
       isrc: f.isrc,
       url: f.href,

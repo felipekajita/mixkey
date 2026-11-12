@@ -19,25 +19,20 @@ function getWorker() {
   return worker;
 }
 
-export interface AnalysisResult { key?: string; keyStrength?: number; bpm?: number; bpmConf?: number; danceability?: number; loudness?: number; durationSec?: number }
+export interface AnalysisResult { key?: string; keyStrength?: number; bpm?: number; bpmConf?: number; danceability?: number; loudness?: number; durationSec?: number; segments?: number; keyAgree?: number }
 
 const SR = 44100;
 
-/** Decodifica e reamostra para 44.1 kHz mono, pegando um trecho representativo */
-async function decodeSegment(buf: ArrayBuffer, maxSec: number): Promise<{ samples: Float32Array; duration: number }> {
+/** Decodifica e reamostra para 44.1 kHz mono */
+async function decodeMono(buf: ArrayBuffer): Promise<{ data: Float32Array; duration: number }> {
   const ctx = new OfflineAudioContext(1, SR, SR);
   const audio = await ctx.decodeAudioData(buf);
-  const duration = audio.duration;
-  const total = audio.length;
-  const segLen = Math.min(total, Math.round(maxSec * audio.sampleRate));
-  // trecho a partir de ~30% da faixa (evita intro/outro só de percussão)
-  const start = total > segLen ? Math.min(Math.round(total * 0.3), total - segLen) : 0;
-  const out = new Float32Array(segLen);
+  const out = new Float32Array(audio.length);
   for (let c = 0; c < audio.numberOfChannels; c++) {
     const d = audio.getChannelData(c);
-    for (let i = 0; i < segLen; i++) out[i] += d[start + i] / audio.numberOfChannels;
+    for (let i = 0; i < audio.length; i++) out[i] += d[i] / audio.numberOfChannels;
   }
-  return { samples: out, duration };
+  return { data: out, duration: audio.duration };
 }
 
 function rmsDb(x: Float32Array) {
@@ -46,23 +41,57 @@ function rmsDb(x: Float32Array) {
   return 10 * Math.log10(s / (x.length / 4) + 1e-12);
 }
 
-export async function analyzeAudio(buf: ArrayBuffer, maxSec = 90): Promise<AnalysisResult> {
-  const { samples, duration } = await decodeSegment(buf, maxSec);
-  const loudness = rmsDb(samples);
+async function runWorker(samples: Float32Array): Promise<any> {
   const id = ++seq;
   const res: any = await new Promise((resolve) => {
     pending.set(id, resolve);
     getWorker().postMessage({ id, samples, sampleRate: SR }, [samples.buffer]);
   });
   if (!res.ok) throw new Error(res.error || "Falha na análise");
-  let key: string | undefined;
-  if (res.key) {
-    const pc = NOTE_NAMES_SHARP.indexOf(res.key.replace("Bb", "A#").replace("Eb", "D#").replace("Ab", "G#").replace("Db", "C#").replace("Gb", "F#"));
-    if (pc >= 0) key = pcToCamelot(pc, res.scale === "minor");
+  return res;
+}
+
+function toCamelot(key?: string, scale?: string): string | undefined {
+  if (!key) return undefined;
+  const pc = NOTE_NAMES_SHARP.indexOf(key.replace("Bb", "A#").replace("Eb", "D#").replace("Ab", "G#").replace("Db", "C#").replace("Gb", "F#"));
+  return pc >= 0 ? pcToCamelot(pc, scale === "minor") : undefined;
+}
+
+/**
+ * Analisa o áudio.
+ * - Prévias (≤ 40 s): o trecho inteiro.
+ * - Faixas completas: 3 trechos de 60 s (≈15%, 45% e 75% da música) e votação
+ *   — key pela soma da "força" de cada trecho, BPM pela mediana (meio/dobro unificados).
+ */
+export async function analyzeAudio(buf: ArrayBuffer): Promise<AnalysisResult> {
+  const { data, duration } = await decodeMono(buf);
+  const segLen = Math.min(data.length, 60 * SR);
+  const starts = duration <= 40 ? [0] : [0.15, 0.45, 0.75].map((f) => Math.max(0, Math.min(data.length - segLen, Math.round(data.length * f))));
+  const results: any[] = [];
+  let loud = 0;
+  for (const st of starts) {
+    const seg = data.slice(st, st + segLen);
+    loud += rmsDb(seg) / starts.length;
+    results.push(await runWorker(seg));
   }
+  // key: votação ponderada pela força
+  const kv = new Map<string, number>();
+  for (const r of results) {
+    const k = toCamelot(r.key, r.scale);
+    if (k) kv.set(k, (kv.get(k) ?? 0) + (r.strength ?? 0.5));
+  }
+  const key = [...kv.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const keyAgree = key ? results.filter((r) => toCamelot(r.key, r.scale) === key).length : 0;
+  // BPM: normaliza para a oitava do primeiro e tira a mediana
+  const bpms = results.map((r) => normalizeBpm(r.bpm)).filter((b): b is number => !!b);
+  const ref = bpms[0];
+  const aligned = bpms.map((b) => [b, b * 2, b / 2].sort((x, y) => Math.abs(x - ref) - Math.abs(y - ref))[0]).sort((a, b) => a - b);
+  const bpm = aligned.length ? normalizeBpm(aligned[Math.floor(aligned.length / 2)]) : undefined;
+  const dance = results.map((r) => r.danceability).filter((d) => d != null);
   return {
-    key, keyStrength: res.strength, bpm: normalizeBpm(res.bpm), bpmConf: res.bpmConf,
-    danceability: res.danceability, loudness, durationSec: duration,
+    key, bpm, keyStrength: results[0]?.strength, bpmConf: results[0]?.bpmConf,
+    danceability: dance.length ? dance.reduce((a: number, b: number) => a + b, 0) / dance.length : undefined,
+    loudness: loud, durationSec: duration, segments: results.length, keyAgree,
   };
 }
 
@@ -98,5 +127,5 @@ async function shrinkImage(blob: Blob, size: number): Promise<string> {
 export async function analyzePreview(url: string): Promise<AnalysisResult> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Prévia indisponível (${r.status})`);
-  return analyzeAudio(await r.arrayBuffer(), 30);
+  return analyzeAudio(await r.arrayBuffer());
 }
